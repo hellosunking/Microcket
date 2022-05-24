@@ -1,5 +1,5 @@
 # Microcket: an extra-fast and flexiable tool for 3D genomics data analysis
-Version 1.0.0, Apr 2022<br />
+Version 1.0.0, May 2022<br />
 Authors: Yun Zhao, Mengqi Yang, Qin Peng, Leina Lu, Xiaowen Lyu, and Kun Sun \(sunkun@szbl.ac.cn\)<br />
 <br />
 Distributed under the
@@ -49,20 +49,20 @@ To build the index for `BWA` (if you want to use `BWA` for the analysis):
 ```
 bin/bwa index -a bwtsw -p index/BWA/hg38 hg38.p13.fa
 ```
-On the other hand, if you already had built such indexes, you can link them to `index/`.<br />
+On the other hand, if you already had built such indices before, you can link them to `index/`.<br />
 
-For annotation files, you need to prepare `XXX.info` and `XXX.sam.header` files and put them under the `anno`
-directory (XXX is the genome name). `XXX.info` is a 2-column file recording the lengths of each chromosome
+Besides genome indices, you also need to prepare `XXX.info` and `XXX.sam.header` files and put them under the
+`anno` directory (`XXX` is the genome id). `XXX.info` is a 2-column file recording the lengths of each chromosome
 in the genome, and `XXX.sam.header` is header for SAM/BAM format. Please note that `Microcket` has already
 packaged such files for `hg38` and `mm10` therefore you do not need to do this if you are working on these
-species, and you can refer them as templates for other species.
+species, and you can refer them as templates for other species/genomes.
 
 ## Run Microcket
 The main program is `microcket` under the same directory as this `README.md` file. You can add its path to
 your `~/.bashrc` file under the `PATH` variable to call it from anywhere; or you can run the following command
 to add it to your current session:
 ```
-user@linux$ PATH=$PATH:$PWD/bin/
+user@linux$ PATH=$PATH:$PWD
 ```
 
 Call `microcket` without any parameters to see the usage (or use '-h' option):
@@ -71,7 +71,7 @@ Usage: microcket [options] -i <fq.list> -o <sid>
 
 Authors : Yu Zhao, Mengqi Yang, Qin Peng, Leina Lu, Xiaowen Lyu, and Kun Sun
 Software: Kun Sun (sunkun@szbl.ac.cn)
-Version: 1.0.0, Apr 2022
+Version: 1.0.0, May 2022
 
 Microcket is an extra-fast and flexiable toolkit for Hi-C/Micro-C data analysis.
 It has been specifically optimized for long-cycle (100 or longer) Micro-C data.
@@ -114,11 +114,11 @@ reads while BWA for the unstitched ones, and "BWA-STAR" means the opposite manne
 
 The input of `Microcket` is a file containing the paths to the paired-end fastq files, where you can add
 as many lines as you like (e.g., 1 line for 1 lane). If your data is generated from biological replicates,
-you can set '-b' option to keep the identical reads between each replicates.
+you can set '-b' option to preserve identical reads between each replicates.
 
 ### Example 1
 Your data is generated using Illumina platform with 2 lanes, then you can prepare a `fq.list.example1`
-file as fowllows:
+file as follows:
 
 ```
 # lines starting with # are considered as comments
@@ -137,7 +137,7 @@ user@linux$ microcket -i /path/to/fq.list.example1 -o test.sample1
 
 ### Example 2
 You are working on mouse cells and you want to use `mm10` as the reference genome; you have constructed 3
-biological replicates and sequenced them on a BGI sequencer (replicate 1 has two lanes); you want to use
+biological replicates and sequenced them on a BGI sequencer (and replicate 1 has two lanes); you want to use
 `BWA` as the underline aligner; you want to visualize the `hic` result in UCSC genome browser and a `cool`
 format result for other tools; you want to use 16 CPUs in your computing server; you have prepared a
 `fq.list.example2` as follows:
@@ -155,8 +155,8 @@ user@linux$ microcket -g mm10 -a bwa -k bgi -t 16 -buc -i /path/to/fq.list.examp
 ```
 
 ## Outputs explanation
-`Microcket` outputs the final mappable reads in BAM format (with an index), called interactions in `hic` format
-(optionally an additional `cool` format file), and key statistics of the analysis.
+`Microcket` outputs the final mappable reads in BAM format (with an index) unless '-X' is set, called interactions
+in `hic` format (optionally in an additional `cool` format), and key statistics of the analysis.
 
 ---
 Please send bug reports to Kun Sun \(sunkun@szbl.ac.cn\).<br />
