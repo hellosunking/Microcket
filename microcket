@@ -1,0 +1,478 @@
+#!/bin/bash
+#
+# Author: Kun Sun @ SZBL (sunkun@szbl.ac.cn)
+# Date  : 2022.5.26
+#
+set -o nounset
+set -o errexit
+
+## First public version after numerous revisions and optimizations
+VERSION="1.0.0, May 2022"
+
+function usage() {
+echo -e "
+\033[1;34mUsage: microcket [options] -i <fq.list> -o <sid>\033[0m
+
+Authors : Yu Zhao, Mengqi Yang, Qin Peng, Leina Lu, Xiaowen Lyu, Kun Sun
+Software: Kun Sun (sunkun@szbl.ac.cn)
+Version : $VERSION
+
+Microcket is a flexiable toolkit for Hi-C/Micro-C/HiChIP/MicroChIP data analysis.
+It has been specifically optimized for long-cycle (100 or longer) reads.
+
+Options:
+  -i fq.list   Specify an input file recording paths to fastq files
+                   Multiple lanes of data are supported; gzip-ed files are also supported.
+  -o sid       Set sample id, which will be used as prefix of all output files.
+
+  -b           Set this flag to keep inter-lane duplications (e.g., biological replicates)
+  -m mode      Set read stitch mode. Default: auto.
+                   Supports yes, no, auto
+
+  -g genome    Set genome. Default hg38.
+  -a aligner   Set underline aligner. Default: STAR.
+                   Supports STAR, BWA, STAR-BWA, BWA-STAR
+  -k kit       Set sequencing kit for adaptor-trimming. Default: illumina.
+                   Supports bgi, illumina, nextera.
+
+  -r r1[,r2]   Set resolutions in hic file (use ',' to separate multiple values)
+                   Default: 2500000,1000000,500000,250000,100000,50000,25000,10000,5000
+  -u           Set to generate UCSC-compatible hic files (\e[4mslower\e[0m)
+  -c           Set to generate cool files (require \e[3mcooler\e[m package; \e[4mtakes time\e[0m)
+                   Note: the smallest bin in '-r' will be used during cool file generation.
+  -x           Set to skip BAM file generation.
+
+  -t thread    Set running threads.
+                   Default: all threads available (\e[1;34mrequire >=4\e[0m)
+
+  -q           Set this flag to run in quiet mode (only report fatal errors)
+  -v           Show software version and quit
+  -h           Show this help information and quit
+
+\033[1;34mMicrocket is freely available at https://github.com/hellosunking/Microcket\033[0m
+"
+}
+
+if [ $# -lt 1 ]
+then
+	usage
+	exit 2
+fi >/dev/stderr
+
+## Microcket root directory
+MDR=`readlink -f $0`
+MDR=`dirname $MDR`
+PRG="$MDR/bin"
+ANNO="$MDR/anno"
+
+## default parameters
+infile=""
+sid=""
+
+biorep="no"
+genome="hg38"
+aligner="STAR"
+seqKit="illumina"
+catmod="auto"
+thread=0
+resolution="2500000,1000000,500000,250000,100000,50000,25000,10000,5000"
+ucscHic="no"
+cooler="no"
+quietmode="no"
+showVer="no"
+showHelp="no"
+skipBam="no"
+
+## parse parameters
+while getopts ":i:o:g:a:k:m:r:t:bucxqvh" OPTION
+do
+	case $OPTION in
+		i)infile="$OPTARG"
+			;;
+		o)sid="$OPTARG"
+			;;
+		g)genome="$OPTARG"
+			;;
+		a)aligner="$OPTARG"
+			;;
+		k)seqKit="$OPTARG"
+			;;
+		m)catmod="$OPTARG"
+			;;
+		r)resolution="$OPTARG"
+			;;
+		t)thread="$OPTARG"
+			;;
+		b)biorep="yes"
+			;;
+		u)ucscHic="yes"
+			;;
+		c)cooler="yes"
+			;;
+		x)skipBam="yes"
+			;;
+		q)quietmode="yes"
+			;;
+		v)showVer="yes"
+			;;
+		h)showHelp="yes"
+			;;
+		?)echo "ERROR: unsupported option detected." && exit 2
+			;;
+	esac
+done >/dev/stderr
+
+if [ $showVer == "yes" ]
+then
+	echo $VERSION
+	exit 0
+fi
+
+if [ $showHelp == "yes" ]
+then
+	usage
+	exit 0
+fi
+
+## check parameters
+if [ -z "$infile" ] || [ -z "$sid" ]
+then
+	echo "ERROR: compulsory parameters (-i/-o) are missing!" >/dev/stderr
+	exit 1
+fi
+if [ ! -s "$infile" ]
+then
+	echo "ERROR: input file does not exist!" >/dev/stderr
+	exit 3
+fi
+
+## check aligner and index
+sindex="$MDR/index/STAR/$genome"
+bindex="$MDR/index/BWA/$genome"
+if [ $aligner == "STAR" ] || [ $aligner == "star" ]
+then
+	if [ ! -s "$sindex/SA" ]
+	then
+		echo "ERROR: STAR index for $genome is missing!" >/dev/stderr
+		exit 10
+	fi
+	aligner_flash="STAR"
+	aligner_unc="STAR"
+elif [ $aligner == "BWA" ] || [ $aligner == "bwa" ]
+then
+	if [ ! -s "$bindex.sa" ]
+	then
+		echo "ERROR: BWA index for $genome is missing!" >/dev/stderr
+		exit 10
+	fi
+	aligner_flash="BWA"
+	aligner_unc="BWA"
+elif [ $aligner == "STAR-BWA" ] || [ $aligner == "star-bwa" ]
+then
+	if [ ! -s "$sindex/SA" ]
+	then
+		echo "ERROR: STAR index for $genome is missing!" >/dev/stderr
+		exit 10
+	fi
+	if [ ! -s "$bindex.sa" ]
+	then
+		echo "ERROR: BWA index for $genome is missing!" >/dev/stderr
+		exit 10
+	fi
+	aligner_flash="STAR"
+	aligner_unc="BWA"
+elif [ $aligner == "BWA-STAR" ] || [ $aligner == "bwa-star" ]
+then
+	if [ ! -s "$sindex/SA" ]
+	then
+		echo "ERROR: STAR index for $genome is missing!" >/dev/stderr
+		exit 10
+	fi
+	if [ ! -s "$bindex.sa" ]
+	then
+		echo "ERROR: BWA index for $genome is missing!" >/dev/stderr
+		exit 10
+	fi
+	aligner_flash="BWA"
+	aligner_unc="STAR"
+else
+	echo "ERROR: Unsupported aligner! Currently mdancer supports STAR, BWA, STAR-BWA, or BWA-STAR." >/dev/stderr
+	exit 10
+fi
+
+GINFO="$ANNO/$genome.info"
+samheader="$ANNO/$genome.sam.header"
+if [ ! -s "$GINFO" ] || [ ! -s "$samheader" ]
+then
+	echo "ERROR: annotation file for $genome is missing!" >/dev/stderr
+	exit 10
+fi
+
+## others
+## seqKit will be checked by ktrim, so I do not need to check it here
+if [ $catmod != "yes" ] && [ $catmod != "no" ] && [ $catmod != "auto" ]
+then
+	echo "ERROR: unknown catmode! Must be yes, no, or auto." >/dev/stderr
+	exit 11
+fi
+
+if [ $thread == "0" ]	## use all threads
+then
+	thread=`cat /proc/cpuinfo | grep processor | wc -l`
+	echo "INFO: $thread threads will be used."
+fi
+
+if [ $thread -lt 4 ]
+then
+	echo "ERROR: at least 4 threads are needed." >/dev/stderr
+	exit 12
+fi
+
+## thread for pipes
+if [ $thread -ge 8 ]
+then
+	left_thread=4
+else
+	left_thread=2
+fi
+let right_thread=$thread-$left_thread
+
+## due to version issue, I have included pre-complied flash, samtools, STAR, bwa in this package
+## check cooler, which is a python package and could NOT be included here
+if [ $cooler == "yes" ]
+then
+	COOLER=`which cooler || echo ""`
+	if [ -z $COOLER ]
+	then
+		echo "ERROR: Cooler is NOT found but you have set '-c'!" >/dev/stderr
+		exit 100
+	else
+		[ $quietmode == "yes" ] || echo "INFO: Cooler is found at '$COOLER'."
+	fi
+fi
+########################## START ANALYSIS ############################################
+## extract input files
+R1s=""
+R2s=""
+fileCnt=0
+declare -a R1s_arr
+declare -a R2s_arr
+while read fq1 fq2 extra
+do
+	[ ${fq1:0:1} == "#" ] && continue
+
+	if [ -z "$fq2" ]
+	then
+		echo "ERROR: invalid input file! Each lane must contain both read1 and read2!" >/dev/stderr
+		exit 21
+	fi
+
+## Donot check files here, therefore users' could use multiple lanes
+#	if [ ! -s "$fq1" ] || [ ! -s "$fq2" ]
+#	then
+#		echo "ERROR: input fastq file does not exist!" >/dev/stderr
+#		exit 22
+#	fi
+
+	R1s="$R1s,$fq1"
+	R2s="$R2s,$fq2"
+	R1s_arr[$fileCnt]=$fq1
+	R2s_arr[$fileCnt]=$fq2
+
+	let fileCnt=$fileCnt+1
+done < $infile
+
+## remove the head ','
+R1fq=${R1s:1}
+R2fq=${R2s:1}
+
+if [ $fileCnt -eq 1 ] && [ $biorep == "yes" ]	## only 1 file, but -b is set
+then
+	[ $quietmode == "yes" ] || echo "WARNING: Only 1 lane is provided; '-b' option is meaningless and will be ignored."
+	biorep="no"
+fi
+
+## parameters for STAR
+minConcatCycle=99
+minIntron=20
+maxIntron=10000
+minChim=20
+
+## start analysis
+datetime=`date`
+[ $quietmode == "yes" ] || echo "########## Microcket starts on $datetime ##########"
+
+## read preprocessing
+if [ $biorep == "no" ]
+then
+	[ $quietmode == "yes" ] || echo "Read preprocessing ..."
+	## the modified combo is 3x faster than the normal ktrim+krmdup
+	kthread=4
+	[ $thread -ge 8 ] && kthread=6
+	[ -s $sid.rmdup.log ] || $PRG/ktrim.mod -k $seqKit -t $kthread -o $sid -1 $R1fq -2 $R2fq | $PRG/krmdup -i /dev/stdin -o $sid.rmdup
+	if [ $? != 0 ]
+	then
+		echo "ERROR: preprcessing failed! Please check your fastq files!" >/dev/stderr
+		exit 31
+	fi
+else	## biological repolicates; including multi-index during library preparation
+	[ $quietmode == "yes" ] || echo "Read preprocessing (as biological replicates) ..."
+	kthread=4
+	[ $thread -ge 8 ] && kthread=6
+	for i in ${!R1s_arr[@]}
+	do
+		$PRG/ktrim.mod -k $seqKit -t $kthread -o $sid.$i -1 ${R1s_arr[$i]} -2 ${R2s_arr[$i]} | \
+			$PRG/krmdup -i /dev/stdin -o $sid.$i.rmdup
+		if [ $? != 0 ]
+		then
+			echo "ERROR: preprcessing failed! Check your fastq files!" >/dev/stderr
+			exit 31
+		fi
+	done
+
+	mv $sid.0.rmdup.read1.fq $sid.rmdup.read1.fq
+	mv $sid.0.rmdup.read2.fq $sid.rmdup.read2.fq
+	cat $sid.*.rmdup.read1.fq >>$sid.rmdup.read1.fq
+	cat $sid.*.rmdup.read2.fq >>$sid.rmdup.read2.fq
+
+	cat $sid.*.trim.log  >$sid.trim.log
+	cat $sid.*.rmdup.log >$sid.rmdup.log
+fi
+
+[ $quietmode == "yes" ] || echo "Check stitch strategy ..."
+## for HiC, should use 'never' as most protocols generate ~400 bp fragments therefore PE150 could not read through
+## in auto mode: check read cycle, if too short, i.e., < 100, then do not do flash combine
+if [ $catmod == "auto" ]
+then
+	seqCycle=`perl $PRG/check.cycle.pl $sid.rmdup.read1.fq`
+	if [ $seqCycle -lt $minConcatCycle ]
+	then
+		[ $quietmode == "yes" ] || echo "INFO: input reads are too short, read stitch will be skipped."
+		DoSTITCH="no"
+	else
+		[ $quietmode == "yes" ] || echo "INFO: input reads are long enough for stitching."
+		DoSTITCH="yes"
+	fi
+elif [ $catmod == "no" ]
+then
+	DoSTITCH="no"
+	[ $quietmode == "yes" ] || echo "INFO: read stitch will be skipped."
+else
+	DoSTITCH="yes"
+	[ $quietmode == "yes" ] || echo "INFO: read stitch will be forced."
+fi
+
+if [ $DoSTITCH == "yes" ]
+then
+	## use flash to stitch R1 and R2
+	[ $quietmode == "yes" ] || echo "Stitch reads ..."
+	## TODO: use --interleaved-input to pipe flash and Krmdup
+	$PRG/flash -m 10 -M 150 -t $thread -o $sid.flash $sid.rmdup.read1.fq $sid.rmdup.read2.fq >$sid.flash.log
+	## TODO: check flash report, warn if too few reads combined
+
+	## cut the tailing 10 cycles in notCombined reads
+	## This is because flash will not combine those with < 10 bp overlap
+	$PRG/cut.fq.tail $sid.flash.notCombined_1.fastq $sid.flash.notCombined_2.fastq $sid.cut &
+
+	[ $quietmode == "yes" ] || echo "Map stitched reads using $aligner_flash ..."
+	## alignment on flash-combined reads
+	if [ $aligner_flash == "STAR" ]
+	then
+		mkdir -p $sid.STAR/
+		$PRG/STAR --genomeDir $sindex \
+			--runThreadN $thread \
+			--readFilesIn $sid.flash.extendedFrags.fastq \
+			--outFileNamePrefix $sid.STAR/flash. \
+			--outSAMtype BAM Unsorted \
+			--outSAMunmapped None --outSAMattributes Standard \
+			--alignIntronMin $minIntron --alignIntronMax $maxIntron \
+			--chimOutType WithinBAM --chimSegmentMin $minChim >$sid.STAR/flash.run.log
+		$PRG/samtools view -@ $left_thread $sid.STAR/flash.Aligned.out.bam | $PRG/sam2pairs /dev/stdin flash $sid $right_thread
+	else	## BWA
+		$PRG/bwa mem -5 -T 10 -v 2 -t $thread $bindex $sid.flash.extendedFrags.fastq 2>$sid.bwa.stitched.log | $PRG/sam2pairs /dev/stdin flash $sid 4
+	fi
+	wait
+else
+	ln -sf $sid.rmdup.read1.fq $sid.cut.read1.fq
+	ln -sf $sid.rmdup.read2.fq $sid.cut.read2.fq
+	touch $sid.flash.pairs
+	touch $sid.flash.sam
+fi
+
+[ $quietmode == "yes" ] || echo "Map un-stitched reads using $aligner_unc ..."
+## alignment on uncombined reads
+if [ $aligner_unc == "STAR" ]
+then
+	mkdir -p $sid.STAR/
+	$PRG/STAR --genomeDir $sindex \
+		--runThreadN $thread \
+		--readFilesIn $sid.cut.read1.fq $sid.cut.read2.fq \
+		--outFileNamePrefix $sid.STAR/unc. \
+		--outSAMtype BAM Unsorted \
+		--outSAMunmapped None --outSAMattributes Standard \
+		--alignIntronMin $minIntron --alignIntronMax $maxIntron \
+		--chimOutType WithinBAM --chimSegmentMin $minChim >$sid.STAR/unc.run.log
+	$PRG/samtools view -@ $left_thread $sid.STAR/unc.Aligned.out.bam | $PRG/sam2pairs /dev/stdin unc $sid $right_thread
+else
+	$PRG/bwa mem -5SP -T 10 -v 2 -t $thread $bindex $sid.cut.read1.fq $sid.cut.read2.fq 2>$sid.bwa.unstitched.log | $PRG/sam2pairs /dev/stdin unc $sid 4
+fi
+## TODO: check whether align the notCombined reads separately better or not
+
+[ $quietmode == "yes" ] || echo "Generate pairs ..."
+## NOTE: this header is essential for juicerbox to recognize the format
+## -k3,3n -k5,5n is essential for pairix and cooler
+cp $ANNO/4DN.DCIC.header $sid.final.pairs
+cat $sid.flash.pairs $sid.unc.pairs | LANG=C sort -T . -k2,2d -k4,4d -k3,3n -k5,5n --parallel=$thread -S 90% >>$sid.final.pairs
+
+[ $quietmode == "yes" ] || echo "Generate analysis statistics ..."
+perl $PRG/make.stat.pl $sid $DoSTITCH >$sid.final.stat
+
+## convert to hic format
+[ $quietmode == "yes" ] || echo "Convert to hic format ..."
+if [ $ucscHic == "yes" ]
+then
+	## a relatively old version of juicer tool will be used to be compatible with UCSC
+	JUICER=$PRG/juicer_tools.ucsc.jar
+	java -Xmx4g -jar $PRG/juicer_tools.ucsc.jar pre \
+		-r $resolution $sid.final.pairs $sid.hic $genome &
+else
+	## newer versions supports "--threads"
+	## but does not speed-up significantly with multi-threads
+	java -Xmx4g -jar $PRG/juicer_tools.jar pre --threads 4 \
+		-r $resolution $sid.final.pairs $sid.hic $genome &
+fi >$sid.juicer.log 2>&1
+
+## convert to cooler format and do normalization
+if [ $cooler == "yes" ]
+then
+	[ $quietmode == "yes" ] || echo "Convert to cool format (please be patient) ..."
+	## this combo is faster than "cooler cload pairs", because the later does not support multi-thread
+	$PRG/bgzip -c $sid.final.pairs >$sid.final.pairs.gz
+	$PRG/pairix $sid.final.pairs.gz
+	minBIN=`echo $resolution | perl -ne '@r=split /,/; @s=sort {$a<=>$b} @r; print $s[0]'`
+	cooler cload pairix -p $thread $GINFO:$minBIN $sid.final.pairs.gz $sid.$minBIN.cool >$sid.cooler.log 2>&1
+#	cooler zoomify --balance -p $thread $sid.$minBIN.cool >>$sid.cooler.log 2>&1
+	## the final output is $sid.1kb.cool
+	wait
+fi
+
+## generate final mapping results
+if [ $skipBam == "no" ]
+then
+	[ $quietmode == "yes" ] || echo "Generate filtered alignment results (please be patient) ..."
+	cat $samheader $sid.flash.sam $sid.unc.sam | $PRG/samtools view -@ $left_thread --no-PG -b - | \
+		$PRG/samtools sort -@ $right_thread --no-PG -o $sid.valid.bam - 2>/dev/null
+	$PRG/samtools index -@ $thread $sid.valid.bam
+fi
+
+wait
+
+## clean up
+[ $quietmode == "yes" ] || echo "Clean up intermediate files ..."
+rm -f $sid*rmdup*fq $sid.flash.*fastq
+rm -f $sid.flash.pairs $sid.unc.pairs $sid.flash.sam $sid.unc.sam
+#rm -rf $sid.STAR/ $sid.*raw.sam
+
+datetime=`date`
+[ $quietmode == "yes" ] || echo "########## Microcket finishes on $datetime ##########"
+
