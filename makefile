@@ -19,5 +19,5 @@ bin/sam2pairs: src/sam2pairs/pairutil.h src/sam2pairs/flash2pairs.h src/sam2pair
 	@cd src/sam2pairs/; g++ $(GXXFlag) -o ../../bin/sam2pairs sam2pairs.cpp; cd ../../
 
 clean:
-	@rm -f bin/ktrim.mod bin/krmdup.mod bin/sam2pair
+	@rm -f bin/ktrim.mod bin/krmdup bin/cut.fq.tail bin/sam2pairs
 
