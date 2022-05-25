@@ -469,7 +469,7 @@ wait
 
 ## clean up
 [ $quietmode == "yes" ] || echo "Clean up intermediate files ..."
-rm -f $sid*rmdup*fq $sid.flash.*fastq
+rm -f $sid*rmdup*fq $sid*cut*fq $sid.flash.*fastq
 rm -f $sid.flash.pairs $sid.unc.pairs $sid.flash.sam $sid.unc.sam
 #rm -rf $sid.STAR/ $sid.*raw.sam
 

@@ -16,7 +16,7 @@ tools:
 - [STAR](https://github.com/alexdobin/STAR "STAR")
 - [BWA](https://github.com/lh3/bwa "BWA")
 - [Samtools](http://www.htslib.org/ "Samtools")
-- [FLASH](http://ccb.jhu.edu/software/FLASH/ "FALSH")
+- [FLASH](http://ccb.jhu.edu/software/FLASH/ "FLASH")
 - [Pairix](https://github.com/4dn-dcic/pairix "Pairix")
 - [JuicerTools](https://github.com/aidenlab/JuicerTools "JuicerTools")
 
