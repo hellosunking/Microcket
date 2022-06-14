@@ -14,10 +14,10 @@ For detailed information please refer to the license files under `license` direc
 tools:
 
 - [STAR](https://github.com/alexdobin/STAR "STAR")
-- [BWA](https://github.com/lh3/bwa "BWA")
+- [BWA](https://github.com/lh3/bwa "BWA") (optional)
 - [Samtools](http://www.htslib.org/ "Samtools")
 - [FLASH](http://ccb.jhu.edu/software/FLASH/ "FLASH")
-- [Pairix](https://github.com/4dn-dcic/pairix "Pairix")
+- [Pairix](https://github.com/4dn-dcic/pairix "Pairix") (optional)
 - [JuicerTools](https://github.com/aidenlab/JuicerTools "JuicerTools")
 
 Pre-compiled executables for these tools are included in `bin/` directory (compiled with `g++ v4.8.5` and
