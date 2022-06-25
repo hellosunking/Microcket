@@ -155,7 +155,7 @@ user@linux$ microcket -g mm10 -a bwa -k bgi -t 16 -buc -i /path/to/fq.list.examp
 ```
 
 ## Outputs explanation
-`Microcket` outputs the final mappable reads in BAM format (with an index) unless '-X' is set, called interactions
+`Microcket` outputs the final mappable reads in BAM format (with an index) unless '-x' is set, called interactions
 in `hic` format (optionally in an additional `cool` format), and key statistics of the analysis.
 
 ---
