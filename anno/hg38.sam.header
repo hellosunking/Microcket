@@ -24,4 +24,4 @@
 @SQ	SN:chrX	LN:156040895
 @SQ	SN:chrY	LN:57227415
 @SQ	SN:chrM	LN:16569
-@PG	ID:MicroDancer	PN:MicroDancer	DS:hg38
+@PG	ID:Microcket	PN:Microcket	VN:1.0.0	DS:hg38
