@@ -235,7 +235,7 @@ then
 else
 	left_thread=2
 fi
-let right_thread=$thread-$left_thread
+let sort_thread=$thread-$left_thread
 
 ## due to version issue, I have included pre-complied flash, samtools, STAR, bwa in this package
 ## check cooler, which is a python package and could NOT be included here
@@ -321,7 +321,7 @@ else	## biological repolicates; including multi-index during library preparation
 	[ $thread -ge 8 ] && kthread=6
 	for i in ${!R1s_arr[@]}
 	do
-		$PRG/ktrim.mod -k $seqKit -t $kthread -o $sid.$i -1 ${R1s_arr[$i]} -2 ${R2s_arr[$i]} | \
+		[ -s $sid.$i.rmdup.log ] || $PRG/ktrim.mod -k $seqKit -t $kthread -o $sid.$i -1 ${R1s_arr[$i]} -2 ${R2s_arr[$i]} | \
 			$PRG/krmdup -i /dev/stdin -o $sid.$i.rmdup
 		if [ $? != 0 ]
 		then
@@ -332,11 +332,13 @@ else	## biological repolicates; including multi-index during library preparation
 
 	mv $sid.0.rmdup.read1.fq $sid.rmdup.read1.fq
 	mv $sid.0.rmdup.read2.fq $sid.rmdup.read2.fq
-	cat $sid.*.rmdup.read1.fq >>$sid.rmdup.read1.fq
-	cat $sid.*.rmdup.read2.fq >>$sid.rmdup.read2.fq
+	cat $sid.*.rmdup.read1.fq >>$sid.rmdup.read1.fq &
+	cat $sid.*.rmdup.read2.fq >>$sid.rmdup.read2.fq &
 
 	cat $sid.*.trim.log  >$sid.trim.log
 	cat $sid.*.rmdup.log >$sid.rmdup.log
+	rm -f $sid.[0-9]*.trim.log $sid.[0-9]*.rmdup.log
+	wait
 fi
 
 [ $quietmode == "yes" ] || echo "Check stitch strategy ..."
@@ -387,9 +389,12 @@ then
 			--outSAMunmapped None --outSAMattributes Standard \
 			--alignIntronMin $minIntron --alignIntronMax $maxIntron \
 			--chimOutType WithinBAM --chimSegmentMin $minChim >$sid.STAR/flash.run.log
-		$PRG/samtools view -@ $left_thread $sid.STAR/flash.Aligned.out.bam | $PRG/sam2pairs /dev/stdin flash $sid $right_thread
+		$PRG/samtools view -@ $left_thread $sid.STAR/flash.Aligned.out.bam | $PRG/sam2pairs /dev/stdin flash $sid $left_thread | \
+			LANG=C sort -k2,2d -k4,4d -k3,3n -k5,5n --parallel=$thread -S 50% >$sid.flash.pairs
 	else	## BWA
-		$PRG/bwa mem -5 -T 10 -v 2 -t $thread $bindex $sid.flash.extendedFrags.fastq 2>$sid.bwa.stitched.log | $PRG/sam2pairs /dev/stdin flash $sid 4
+		$PRG/bwa mem -5 -T 10 -v 2 -t $thread $bindex $sid.flash.extendedFrags.fastq 2>$sid.bwa.stitched.log | \
+			$PRG/sam2pairs /dev/stdin flash $sid $left_thread | \
+			LANG=C sort -k2,2d -k4,4d -k3,3n -k5,5n --parallel=$thread -S 50% >$sid.flash.pairs
 	fi
 	wait
 else
@@ -397,6 +402,15 @@ else
 	ln -sf $sid.rmdup.read2.fq $sid.cut.read2.fq
 	touch $sid.flash.pairs
 	touch $sid.flash.sam
+fi
+
+cp $ANNO/4DN.DCIC.header $sid.final.pairs
+if [ -s $sid.flash.pairs ]
+then
+	uncfile=$sid.unc.pairs
+	rm -f $sid.unc.pairs
+else
+	uncfile=$sid.final.pairs
 fi
 
 [ $quietmode == "yes" ] || echo "Map un-stitched reads using $aligner_unc ..."
@@ -412,17 +426,22 @@ then
 		--outSAMunmapped None --outSAMattributes Standard \
 		--alignIntronMin $minIntron --alignIntronMax $maxIntron \
 		--chimOutType WithinBAM --chimSegmentMin $minChim >$sid.STAR/unc.run.log
-	$PRG/samtools view -@ $left_thread $sid.STAR/unc.Aligned.out.bam | $PRG/sam2pairs /dev/stdin unc $sid $right_thread
+	$PRG/samtools view -@ $left_thread $sid.STAR/unc.Aligned.out.bam | $PRG/sam2pairs /dev/stdin unc $sid $left_thread | \
+		LANG=C sort -k2,2d -k4,4d -k3,3n -k5,5n --parallel=$thread -S 50% >>$uncfile
 else
-	$PRG/bwa mem -5SP -T 10 -v 2 -t $thread $bindex $sid.cut.read1.fq $sid.cut.read2.fq 2>$sid.bwa.unstitched.log | $PRG/sam2pairs /dev/stdin unc $sid 4
+	$PRG/bwa mem -5SP -T 10 -v 2 -t $thread $bindex $sid.cut.read1.fq $sid.cut.read2.fq 2>$sid.bwa.unstitched.log | \
+		$PRG/sam2pairs /dev/stdin unc $sid $left_thread | \
+		LANG=C sort -k2,2d -k4,4d -k3,3n -k5,5n --parallel=$thread -S 50% >>$uncfile
 fi
 ## TODO: check whether align the notCombined reads separately better or not
 
 [ $quietmode == "yes" ] || echo "Generate pairs ..."
 ## NOTE: this header is essential for juicerbox to recognize the format
 ## -k3,3n -k5,5n is essential for pairix and cooler
-cp $ANNO/4DN.DCIC.header $sid.final.pairs
-cat $sid.flash.pairs $sid.unc.pairs | LANG=C sort -T . -k2,2d -k4,4d -k3,3n -k5,5n --parallel=$thread -S 90% >>$sid.final.pairs
+if [ -s $sid.flash.pairs ]
+then
+	LANG=C sort -k2,2d -k4,4d -k3,3n -k5,5n --parallel=$thread -S 50% -m $sid.flash.pairs $sid.unc.pairs >>$sid.final.pairs
+fi
 
 [ $quietmode == "yes" ] || echo "Generate analysis statistics ..."
 perl $PRG/make.stat.pl $sid $DoSTITCH >$sid.final.stat
@@ -461,7 +480,7 @@ if [ $skipBam == "no" ]
 then
 	[ $quietmode == "yes" ] || echo "Generate filtered alignment results (please be patient) ..."
 	cat $samheader $sid.flash.sam $sid.unc.sam | $PRG/samtools view -@ $left_thread --no-PG -b - | \
-		$PRG/samtools sort -@ $right_thread --no-PG -o $sid.valid.bam - 2>/dev/null
+		$PRG/samtools sort -@ $sort_thread --no-PG -o $sid.valid.bam - 2>/dev/null
 	$PRG/samtools index -@ $thread $sid.valid.bam
 fi
 

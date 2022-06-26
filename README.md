@@ -55,7 +55,15 @@ Besides genome indices, you also need to prepare `XXX.info` and `XXX.sam.header`
 `anno` directory (`XXX` is the genome id). `XXX.info` is a 2-column file recording the lengths of each chromosome
 in the genome, and `XXX.sam.header` is header for SAM/BAM format. Please note that `Microcket` has already
 packaged such files for `hg38` and `mm10` therefore you do not need to do this if you are working on these
-species, and you can refer them as templates for other species/genomes.
+species, and you can refer them as templates for other species/genomes.<br />
+
+Moreover, we have prepared a utility program `util/build.index.sh` for this task. You need to prepare a genome
+sequence in fasta format and run this program to build indices:
+```
+sh util/build.index.sh GENOME.FA GENOME.ID
+```
+The first parameter is the path to the genome sequence file and the second paramter is the identifier of this
+genome that you want to use.
 
 ## Run Microcket
 The main program is `microcket` under the same directory as this `README.md` file. You can add its path to
