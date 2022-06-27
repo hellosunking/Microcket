@@ -58,15 +58,11 @@ int main( int argc, char *argv[] ) {
 	base += '.';
 	base += argv[2];
 	string out = base;
-	out += ".pairs";
-	FILE *fpair = fopen( out.c_str(), "wb");
-	out = base;
 	out += ".sam";
 	FILE *fsam = fopen( out.c_str(), "wb");
-	if( fpair==NULL || fsam==NULL ) {
+	if( fsam==NULL ) {
 		cerr << "Error: write output file failed!\n";
 		fin.close();
-		fclose( fpair );
 		fclose( fsam );
 		return 11;
 	}
@@ -130,7 +126,7 @@ int main( int argc, char *argv[] ) {
 				unsigned int end   = loaded * (tn+1) / thread;
 				(*sam2pair)( wkr+start, wkr+end, outPair[tn], outSam[tn], ks[tn] );
 
-				fwrite( outPair[tn].c_str(), 1, outPair[tn].size(), fpair );
+				fwrite( outPair[tn].c_str(), 1, outPair[tn].size(), stdout );
 				fwrite(  outSam[tn].c_str(), 1, outSam[tn].size(),  fsam  );
 				outPair[tn].clear();
 				outSam[tn].clear();
@@ -148,7 +144,7 @@ int main( int argc, char *argv[] ) {
 					unsigned int start = loaded *  tn    / wkt;
 					unsigned int end   = loaded * (tn+1) / wkt;
 					(*sam2pair)( wkr+start, wkr+end, outPair[tn], outSam[tn], ks[tn] );
-					fwrite( outPair[tn].c_str(), 1, outPair[tn].size(), fpair );
+					fwrite( outPair[tn].c_str(), 1, outPair[tn].size(), stdout );
 					fwrite(  outSam[tn].c_str(), 1, outSam[tn].size(),  fsam  );
 					outPair[tn].clear();
 					outSam[tn].clear();
@@ -163,7 +159,6 @@ int main( int argc, char *argv[] ) {
 	} while( nextBatch );
 //	cerr << "Done.\n";
 	fin.close();
-	fclose( fpair );
 	fclose( fsam );
 
 	out = base;
