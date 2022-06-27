@@ -164,9 +164,10 @@ user@linux$ microcket -g mm10 -a bwa -k bgi -t 16 -buc -i /path/to/fq.list.examp
 
 ## Testing dataset
 As most real HiC/Micro-C datasets are very large, we therefore could not include such data in this package.
-For testing purpose, we suggest the users try the public datasets from the literature, e.g.,
-[Rao et al. Cell 2014 (GEO accession number: GSE63525)](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE63525 "Rao et al. Cell 2014"), [The 4D nucleome project](https://www.4dnucleome.org "4DN project"),
-or [ENCODE](https://www.encodeproject.org/search/?type=Experiment&assay_title=Hi-C "ENCODE")
+For testing purpose, we suggest the users try the public datasets from the literature or consortiums, e.g.,
+[Rao et al. Cell 2014 (GEO accession number: GSE63525)](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE63525 "Rao et al. Cell 2014"),
+[4D nucleome project](https://data.4dnucleome.org "4DN project"),
+or [ENCODE project](https://www.encodeproject.org/search/?type=Experiment&assay_title=Hi-C "ENCODE").
 
 ## Outputs explanation
 `Microcket` outputs the final mappable reads in BAM format (with an index) unless '-x' is set, called interactions
