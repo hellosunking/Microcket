@@ -258,7 +258,6 @@ int process_multi_thread_PE_C( const ktrim_param &kp ) {
 	CPEREAD *workingReads, *loadingReads, *swapReads;
 	ktrim_stat kstat;
 	writeBuffer writebuffer;
-	string fileName;
 	vector<string> R1s, R2s;
 	unsigned int totalFiles;
 
@@ -466,9 +465,9 @@ int process_multi_thread_PE_C( const ktrim_param &kp ) {
 		tail_all  += kstat.tail_adapter[i];
 		dimer_all += kstat.dimer[i];
 	}
-	fileName = kp.outpre;
+	string fileName = kp.outpre;
 	fileName += ".trim.log";
-	ofstream fout( fileName.c_str() );
+	ofstream fout( fileName.c_str(), ios::app );
 	if( fout.fail() ) { 
 		fprintf( stderr, "\033[1;34mError: cannot write log file!\033[0m\n" );
 		return 105;

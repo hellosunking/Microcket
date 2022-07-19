@@ -1,5 +1,5 @@
-# Microcket: an extra-fast and flexiable tool for 3D genomics data analysis
-Version 1.0.0, May 2022<br />
+# Microcket: an extra-fast and flexible tool for 3D genomics data (Hi-C, Micro-C, and derivant protocols) analysis
+Version 1.1.0, Jul 2022<br />
 Authors: Yu Zhao, Mengqi Yang, Qin Peng, Leina Lu, Xiaowen Lyu, and Kun Sun \(sunkun@szbl.ac.cn\)<br />
 <br />
 Distributed under the
@@ -14,16 +14,16 @@ For detailed information please refer to the license files under `license` direc
 tools:
 
 - [STAR](https://github.com/alexdobin/STAR "STAR")
-- [BWA](https://github.com/lh3/bwa "BWA") (optional)
+- [BWA](https://github.com/lh3/bwa "BWA")
 - [Samtools](http://www.htslib.org/ "Samtools")
 - [FLASH](http://ccb.jhu.edu/software/FLASH/ "FLASH")
-- [Pairix](https://github.com/4dn-dcic/pairix "Pairix") (optional)
+- [Pairix](https://github.com/4dn-dcic/pairix "Pairix")
 - [JuicerTools](https://github.com/aidenlab/JuicerTools "JuicerTools")
 
-Pre-compiled executables for these tools are included in `bin/` directory (compiled with `g++ v4.8.5` and
-linked with `libz v1.2.7`. If you could not run them (which is usually caused by low version of `libc++` or
-`libz` library), you may re-compile these programs yourself and replace the ones in the `bin` directory,
-then re-compile the in-house progams for `Microcket` via:
+Pre-compiled executables for these tools are included in `bin/` directory (compiled with `g++ v4.8.5` and linked
+with `libz v1.2.7`. If you could not run them (which is usually caused by low version of `libc++` or `libz` library),
+you may re-compile these programs yourself and replace the ones in the `bin` directory (recommended), then re-compile
+the in-house progams for `Microcket` via:
 ```
 user@linux$ make clean && make
 ```
@@ -55,15 +55,7 @@ Besides genome indices, you also need to prepare `XXX.info` and `XXX.sam.header`
 `anno` directory (`XXX` is the genome id). `XXX.info` is a 2-column file recording the lengths of each chromosome
 in the genome, and `XXX.sam.header` is header for SAM/BAM format. Please note that `Microcket` has already
 packaged such files for `hg38` and `mm10` therefore you do not need to do this if you are working on these
-species, and you can refer them as templates for other species/genomes.<br />
-
-Moreover, we have prepared a utility program `util/build.index.sh` for this task. You need to prepare a genome
-sequence in fasta format and run this program to build indices:
-```
-sh util/build.index.sh GENOME.FA GENOME.ID
-```
-The first parameter is the path to the genome sequence file and the second paramter is the identifier of this
-genome that you want to use.
+species, and you can refer them as templates for other species/genomes.
 
 ## Run Microcket
 The main program is `microcket` under the same directory as this `README.md` file. You can add its path to
@@ -79,17 +71,18 @@ Usage: microcket [options] -i <fq.list> -o <sid>
 
 Authors : Yu Zhao, Mengqi Yang, Qin Peng, Leina Lu, Xiaowen Lyu, and Kun Sun
 Software: Kun Sun (sunkun@szbl.ac.cn)
-Version: 1.0.0, May 2022
+Version: 1.1.0, Jul 2022
 
-Microcket is an extra-fast and flexiable toolkit for Hi-C/Micro-C data analysis.
+Microcket is an extra-fast and flexible toolkit for Hi-C/Micro-C data analysis.
 It has been specifically optimized for long-cycle (100 or longer) Micro-C data.
 
-Options:
+Parameters:
   -i fq.list   Specify an input file recording paths to fastq files
                Multiple lanes of data are supported; gzip-ed files are also supported.
 
   -o sid       Set sample id, which will be used as prefix of all output files.
 
+Options:
   -b           Set this flag to keep inter-lane duplications (e.g., biological replicates)
   -m mode      Set read stitch mode. Default: auto.
                    Supports yes, no, auto
@@ -163,9 +156,9 @@ user@linux$ microcket -g mm10 -a bwa -k bgi -t 16 -buc -i /path/to/fq.list.examp
 ```
 
 ## Testing dataset
-As most real HiC/Micro-C datasets are very large, we therefore could not include such data in this package.
+As most real HiC/Micro-C datasets are very large, we therefore could not include such data in this source package.
 For testing purpose, we suggest the users try public datasets from literature or consortiums, e.g.,
-[Rao et al. Cell 2014 (GEO accession number: GSE63525)](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE63525 "Rao et al. Cell 2014"),
+[Rao et al. Cell 2014](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE63525 "Rao et al. Cell 2014"),
 [4D nucleome project](https://data.4dnucleome.org "4DN project"),
 or [ENCODE project](https://www.encodeproject.org/search/?type=Experiment&assay_title=Hi-C "ENCODE").
 

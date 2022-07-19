@@ -1,13 +1,13 @@
 #!/bin/bash
 #
 # Author: Kun Sun @ SZBL (sunkun@szbl.ac.cn)
-# Date  : 2022.5.26
+# Date  : 2022.7.12
 #
 set -o nounset
 set -o errexit
 
 ## First public version after numerous revisions and optimizations
-VERSION="1.0.0, May 2022"
+VERSION="1.1.0, Jul 2022"
 
 function usage() {
 echo -e "
@@ -17,7 +17,7 @@ Authors : Yu Zhao, Mengqi Yang, Qin Peng, Leina Lu, Xiaowen Lyu, Kun Sun
 Software: Kun Sun (sunkun@szbl.ac.cn)
 Version : $VERSION
 
-Microcket is a flexiable toolkit for Hi-C/Micro-C/HiChIP/MicroChIP data analysis.
+Microcket is a flexible toolkit for Hi-C/Micro-C/HiChIP/MicroChIP data analysis.
 It has been specifically optimized for long-cycle (100 or longer) reads.
 
 Options:
@@ -235,7 +235,7 @@ then
 else
 	left_thread=2
 fi
-let sort_thread=$thread-$left_thread
+let right_thread=$thread-$left_thread
 
 ## due to version issue, I have included pre-complied flash, samtools, STAR, bwa in this package
 ## check cooler, which is a python package and could NOT be included here
@@ -250,6 +250,7 @@ then
 		[ $quietmode == "yes" ] || echo "INFO: Cooler is found at '$COOLER'."
 	fi
 fi
+
 ########################## START ANALYSIS ############################################
 ## extract input files
 R1s=""
@@ -266,13 +267,6 @@ do
 		echo "ERROR: invalid input file! Each lane must contain both read1 and read2!" >/dev/stderr
 		exit 21
 	fi
-
-## Donot check files here, therefore users' could use multiple lanes
-#	if [ ! -s "$fq1" ] || [ ! -s "$fq2" ]
-#	then
-#		echo "ERROR: input fastq file does not exist!" >/dev/stderr
-#		exit 22
-#	fi
 
 	R1s="$R1s,$fq1"
 	R2s="$R2s,$fq2"
@@ -293,7 +287,8 @@ then
 fi
 
 ## parameters for STAR
-minConcatCycle=99
+##minConcatCycle=99
+minConcatCycle=120
 minIntron=20
 maxIntron=10000
 minChim=20
@@ -302,51 +297,12 @@ minChim=20
 datetime=`date`
 [ $quietmode == "yes" ] || echo "########## Microcket starts on $datetime ##########"
 
-## read preprocessing
-if [ $biorep == "no" ]
-then
-	[ $quietmode == "yes" ] || echo "Read preprocessing ..."
-	## the modified combo is 3x faster than the normal ktrim+krmdup
-	kthread=4
-	[ $thread -ge 8 ] && kthread=6
-	[ -s $sid.rmdup.log ] || $PRG/ktrim.mod -k $seqKit -t $kthread -o $sid -1 $R1fq -2 $R2fq | $PRG/krmdup -i /dev/stdin -o $sid.rmdup
-	if [ $? != 0 ]
-	then
-		echo "ERROR: preprcessing failed! Please check your fastq files!" >/dev/stderr
-		exit 31
-	fi
-else	## biological repolicates; including multi-index during library preparation
-	[ $quietmode == "yes" ] || echo "Read preprocessing (as biological replicates) ..."
-	kthread=4
-	[ $thread -ge 8 ] && kthread=6
-	for i in ${!R1s_arr[@]}
-	do
-		[ -s $sid.$i.rmdup.log ] || $PRG/ktrim.mod -k $seqKit -t $kthread -o $sid.$i -1 ${R1s_arr[$i]} -2 ${R2s_arr[$i]} | \
-			$PRG/krmdup -i /dev/stdin -o $sid.$i.rmdup
-		if [ $? != 0 ]
-		then
-			echo "ERROR: preprcessing failed! Check your fastq files!" >/dev/stderr
-			exit 31
-		fi
-	done
-
-	mv $sid.0.rmdup.read1.fq $sid.rmdup.read1.fq
-	mv $sid.0.rmdup.read2.fq $sid.rmdup.read2.fq
-	cat $sid.*.rmdup.read1.fq >>$sid.rmdup.read1.fq &
-	cat $sid.*.rmdup.read2.fq >>$sid.rmdup.read2.fq &
-
-	cat $sid.*.trim.log  >$sid.trim.log
-	cat $sid.*.rmdup.log >$sid.rmdup.log
-	rm -f $sid.[0-9]*.trim.log $sid.[0-9]*.rmdup.log
-	wait
-fi
-
 [ $quietmode == "yes" ] || echo "Check stitch strategy ..."
-## for HiC, should use 'never' as most protocols generate ~400 bp fragments therefore PE150 could not read through
 ## in auto mode: check read cycle, if too short, i.e., < 100, then do not do flash combine
+## for HiC, most protocols generate ~400 bp fragments therefore PE150 could not read through
 if [ $catmod == "auto" ]
 then
-	seqCycle=`perl $PRG/check.cycle.pl $sid.rmdup.read1.fq`
+	seqCycle=`perl $PRG/check.cycle.pl $R1fq`
 	if [ $seqCycle -lt $minConcatCycle ]
 	then
 		[ $quietmode == "yes" ] || echo "INFO: input reads are too short, read stitch will be skipped."
@@ -364,22 +320,68 @@ else
 	[ $quietmode == "yes" ] || echo "INFO: read stitch will be forced."
 fi
 
+## read preprocessing
+kthread=4
+[ $thread -ge 8 ] && kthread=6
+if [ $biorep == "no" ]
+then
+	[ $quietmode == "yes" ] || echo "Read preprocessing ..."
+	## the modified combo is 3x faster than the normal ktrim+krmdup
+	if [ $DoSTITCH == "yes" ] 
+	then
+		$PRG/ktrim.mod -k $seqKit -t $kthread -o $sid -1 $R1fq -2 $R2fq | $PRG/krmdup.pipe -i /dev/stdin -o $sid.rmdup | \
+			$PRG/flash --interleaved-input -m 10 -M 150 -t $thread -o $sid.flash - >$sid.flash.log
+		## cut the tailing 10 cycles in notCombined reads
+		## This is because flash will not combine those with < 10 bp overlap
+		$PRG/cut.fq.tail $sid.flash.notCombined_1.fastq $sid.flash.notCombined_2.fastq $sid.cut &
+	else
+		$PRG/ktrim.mod -k $seqKit -t $kthread -o $sid -1 $R1fq -2 $R2fq | $PRG/krmdup -i /dev/stdin -o $sid.rmdup
+	fi
+
+	if [ $? != 0 ]
+	then
+		echo "ERROR: preprcessing failed! Please check your fastq files!" >/dev/stderr
+		exit 31
+	fi
+else	## biological repolicates; including multi-index during library preparation
+	[ $quietmode == "yes" ] || echo "Read preprocessing (as biological replicates) ..."
+	rm -f $sid.rmdup.read1.fq $sid.rmdup.read2.fq
+
+	if [ $DoSTITCH == "yes" ]
+	then
+		for i in ${!R1s_arr[@]}
+		do
+			$PRG/ktrim.mod -k $seqKit -t $kthread -o $sid -1 ${R1s_arr[$i]} -2 ${R2s_arr[$i]} | \
+				$PRG/krmdup.pipe -i /dev/stdin -o $sid.rmdup
+			if [ $? != 0 ]
+			then
+				echo "ERROR: preprcessing failed! Check your fastq files!" >/dev/stderr
+				exit 31
+			fi
+		done | $PRG/flash --interleaved-input -m 10 -M 150 -t $thread -o $sid.flash - >$sid.flash.log
+		$PRG/cut.fq.tail $sid.flash.notCombined_1.fastq $sid.flash.notCombined_2.fastq $sid.cut &
+	else
+		for i in ${!R1s_arr[@]}
+		do
+			$PRG/ktrim.mod -k $seqKit -t $kthread -o $sid -1 ${R1s_arr[$i]} -2 ${R2s_arr[$i]} | \
+				$PRG/krmdup.append -i /dev/stdin -o $sid.rmdup
+			if [ $? != 0 ]
+			then
+				echo "ERROR: preprcessing failed! Check your fastq files!" >/dev/stderr
+				exit 31
+			fi
+		done
+	fi
+fi
+
+## alignment
+cp $ANNO/4DN.DCIC.header $sid.final.pairs
 if [ $DoSTITCH == "yes" ]
 then
-	## use flash to stitch R1 and R2
-	[ $quietmode == "yes" ] || echo "Stitch reads ..."
-	## TODO: use --interleaved-input to pipe flash and Krmdup
-	$PRG/flash -m 10 -M 150 -t $thread -o $sid.flash $sid.rmdup.read1.fq $sid.rmdup.read2.fq >$sid.flash.log
-	## TODO: check flash report, warn if too few reads combined
-
-	## cut the tailing 10 cycles in notCombined reads
-	## This is because flash will not combine those with < 10 bp overlap
-	$PRG/cut.fq.tail $sid.flash.notCombined_1.fastq $sid.flash.notCombined_2.fastq $sid.cut &
-
-	[ $quietmode == "yes" ] || echo "Map stitched reads using $aligner_flash ..."
 	## alignment on flash-combined reads
 	if [ $aligner_flash == "STAR" ]
 	then
+		[ $quietmode == "yes" ] || echo "Map stitched reads using STAR ..."
 		mkdir -p $sid.STAR/
 		$PRG/STAR --genomeDir $sindex \
 			--runThreadN $thread \
@@ -388,35 +390,31 @@ then
 			--outSAMtype BAM Unsorted \
 			--outSAMunmapped None --outSAMattributes Standard \
 			--alignIntronMin $minIntron --alignIntronMax $maxIntron \
+			--scoreGapNoncan 4 \
 			--chimOutType WithinBAM --chimSegmentMin $minChim >$sid.STAR/flash.run.log
+
+		[ $quietmode == "yes" ] || echo "Generate pairs ..."
 		$PRG/samtools view -@ $left_thread $sid.STAR/flash.Aligned.out.bam | $PRG/sam2pairs /dev/stdin flash $sid $left_thread | \
 			LANG=C sort -k2,2d -k4,4d -k3,3n -k5,5n --parallel=$thread -S 50% >$sid.flash.pairs
 	else	## BWA
+		[ $quietmode == "yes" ] || echo "Map stitched reads using BWA and generate pairs ..."
 		$PRG/bwa mem -5 -T 10 -v 2 -t $thread $bindex $sid.flash.extendedFrags.fastq 2>$sid.bwa.stitched.log | \
 			$PRG/sam2pairs /dev/stdin flash $sid $left_thread | \
 			LANG=C sort -k2,2d -k4,4d -k3,3n -k5,5n --parallel=$thread -S 50% >$sid.flash.pairs
 	fi
-	wait
-else
-	ln -sf $sid.rmdup.read1.fq $sid.cut.read1.fq
-	ln -sf $sid.rmdup.read2.fq $sid.cut.read2.fq
-	touch $sid.flash.pairs
-	touch $sid.flash.sam
-fi
-
-cp $ANNO/4DN.DCIC.header $sid.final.pairs
-if [ -s $sid.flash.pairs ]
-then
 	uncfile=$sid.unc.pairs
 	rm -f $sid.unc.pairs
+	wait
 else
+	mv $sid.rmdup.read1.fq $sid.cut.read1.fq
+	mv $sid.rmdup.read2.fq $sid.cut.read2.fq
 	uncfile=$sid.final.pairs
 fi
 
-[ $quietmode == "yes" ] || echo "Map un-stitched reads using $aligner_unc ..."
 ## alignment on uncombined reads
 if [ $aligner_unc == "STAR" ]
 then
+	[ $quietmode == "yes" ] || echo "Map un-stitched reads using STAR ..."
 	mkdir -p $sid.STAR/
 	$PRG/STAR --genomeDir $sindex \
 		--runThreadN $thread \
@@ -425,21 +423,25 @@ then
 		--outSAMtype BAM Unsorted \
 		--outSAMunmapped None --outSAMattributes Standard \
 		--alignIntronMin $minIntron --alignIntronMax $maxIntron \
+		--scoreGapNoncan 4 \
 		--chimOutType WithinBAM --chimSegmentMin $minChim >$sid.STAR/unc.run.log
+
+	[ $quietmode == "yes" ] || echo "Generate pairs ..."
 	$PRG/samtools view -@ $left_thread $sid.STAR/unc.Aligned.out.bam | $PRG/sam2pairs /dev/stdin unc $sid $left_thread | \
 		LANG=C sort -k2,2d -k4,4d -k3,3n -k5,5n --parallel=$thread -S 50% >>$uncfile
 else
+	[ $quietmode == "yes" ] || echo "Map un-stitched reads using BWA and generate pairs ..."
 	$PRG/bwa mem -5SP -T 10 -v 2 -t $thread $bindex $sid.cut.read1.fq $sid.cut.read2.fq 2>$sid.bwa.unstitched.log | \
 		$PRG/sam2pairs /dev/stdin unc $sid $left_thread | \
 		LANG=C sort -k2,2d -k4,4d -k3,3n -k5,5n --parallel=$thread -S 50% >>$uncfile
 fi
 ## TODO: check whether align the notCombined reads separately better or not
 
-[ $quietmode == "yes" ] || echo "Generate pairs ..."
 ## NOTE: this header is essential for juicerbox to recognize the format
 ## -k3,3n -k5,5n is essential for pairix and cooler
-if [ -s $sid.flash.pairs ]
+if [ -s $sid.flash.pairs ]	## Stitch occurs, there should be 2 sorted pairs files, merge them
 then
+	[ $quietmode == "yes" ] || echo "Pool pairs ..."
 	LANG=C sort -k2,2d -k4,4d -k3,3n -k5,5n --parallel=$thread -S 50% -m $sid.flash.pairs $sid.unc.pairs >>$sid.final.pairs
 fi
 
@@ -447,7 +449,7 @@ fi
 perl $PRG/make.stat.pl $sid $DoSTITCH >$sid.final.stat
 
 ## convert to hic format
-[ $quietmode == "yes" ] || echo "Convert to hic format ..."
+[ $quietmode == "yes" ] || echo "Convert to hic format (please be patient) ..."
 if [ $ucscHic == "yes" ]
 then
 	## a relatively old version of juicer tool will be used to be compatible with UCSC
@@ -457,7 +459,7 @@ then
 else
 	## newer versions supports "--threads"
 	## but does not speed-up significantly with multi-threads
-	java -Xmx4g -jar $PRG/juicer_tools.jar pre --threads 4 \
+	java -Xmx16g -jar $PRG/juicer_tools.jar pre --threads 4 \
 		-r $resolution $sid.final.pairs $sid.hic $genome &
 fi >$sid.juicer.log 2>&1
 
@@ -476,11 +478,20 @@ then
 fi
 
 ## generate final mapping results
+if [ $thread -ge 8 ]
+then
+	left_thread=6
+else
+	left_thread=4
+fi
+let sort_thread=$thread-$left_thread
+
 if [ $skipBam == "no" ]
 then
 	[ $quietmode == "yes" ] || echo "Generate filtered alignment results (please be patient) ..."
+	touch $sid.flash.sam
 	cat $samheader $sid.flash.sam $sid.unc.sam | $PRG/samtools view -@ $left_thread --no-PG -b - | \
-		$PRG/samtools sort -@ $sort_thread --no-PG -o $sid.valid.bam - 2>/dev/null
+		$PRG/samtools sort -@ $sort_thread -m 2G --no-PG -o $sid.valid.bam - 2>/dev/null
 	$PRG/samtools index -@ $thread $sid.valid.bam
 fi
 

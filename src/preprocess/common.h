@@ -109,16 +109,16 @@ const unsigned int MAX_SEED_NUM    = 128;
 
 //configurations for parallelization, which is highly related to memory usage
 //but seems to have very minor effect on running time
-const int READS_PER_BATCH            = 1 << 16;	// process 256 K reads per batch (for parallelization)
-const int BUFFER_SIZE_PER_BATCH_READ = 1 << 26;	// 256 MB buffer for each thread to store FASTQ
+const int READS_PER_BATCH            = 1 << 18;	// process 256 K reads per batch (for parallelization)
+const int BUFFER_SIZE_PER_BATCH_READ = 1 << 28;	// 256 MB buffer for each thread to store FASTQ
 const int MEM_SE_READSET = READS_PER_BATCH * (MAX_READ_ID+MAX_READ_CYCLE+MAX_READ_CYCLE);
 const int MEM_PE_READSET = READS_PER_BATCH * (MAX_READ_ID+MAX_READ_CYCLE+MAX_READ_CYCLE) * 2;
 
 // enlarge the buffer for single-thread run
 //const int READS_PER_BATCH_ST = READS_PER_BATCH << 1;	// process 256 K reads per batch (for parallelization)
 //const int BUFFER_SIZE_PER_BATCH_READ_ST = BUFFER_SIZE_PER_BATCH_READ << 1;	// 256 MB buffer for each thread to store FASTQ
-const int READS_PER_BATCH_ST            = 1 << 16;	// No. of reads per-batch for single-thread
-const int BUFFER_SIZE_PER_BATCH_READ_ST = 1 << 26;	// buffer for single-thread to store FASTQ
+const int READS_PER_BATCH_ST            = 1 << 20;	// No. of reads per-batch for single-thread
+const int BUFFER_SIZE_PER_BATCH_READ_ST = 1 << 30;	// buffer for single-thread to store FASTQ
 const int MEM_SE_READSET_ST = READS_PER_BATCH_ST * (MAX_READ_ID+MAX_READ_CYCLE+MAX_READ_CYCLE);
 const int MEM_PE_READSET_ST = READS_PER_BATCH_ST * (MAX_READ_ID+MAX_READ_CYCLE+MAX_READ_CYCLE) * 2;
 
