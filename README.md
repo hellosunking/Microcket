@@ -14,11 +14,11 @@ For detailed information please refer to the license files under `license` direc
 tools:
 
 - [STAR](https://github.com/alexdobin/STAR "STAR")
-- [BWA](https://github.com/lh3/bwa "BWA")
 - [Samtools](http://www.htslib.org/ "Samtools")
 - [FLASH](http://ccb.jhu.edu/software/FLASH/ "FLASH")
-- [Pairix](https://github.com/4dn-dcic/pairix "Pairix")
 - [JuicerTools](https://github.com/aidenlab/JuicerTools "JuicerTools")
+- [BWA](https://github.com/lh3/bwa "BWA") (optional)
+- [Pairix](https://github.com/4dn-dcic/pairix "Pairix") (optional)
 
 Pre-compiled executables for these tools are included in `bin/` directory (compiled with `g++ v4.8.5` and linked
 with `libz v1.2.7`. If you could not run them (which is usually caused by low version of `libc++` or `libz` library),
@@ -55,7 +55,15 @@ Besides genome indices, you also need to prepare `XXX.info` and `XXX.sam.header`
 `anno` directory (`XXX` is the genome id). `XXX.info` is a 2-column file recording the lengths of each chromosome
 in the genome, and `XXX.sam.header` is header for SAM/BAM format. Please note that `Microcket` has already
 packaged such files for `hg38` and `mm10` therefore you do not need to do this if you are working on these
-species, and you can refer them as templates for other species/genomes.
+species, and you can refer them as templates for other species/genomes.<br />
+
+Moreover, we have prepared a utility program `util/build.index.sh` for this task. You need to prepare a genome
+sequence in fasta format and run this program to build indices:
+```
+sh util/build.index.sh GENOME.FA GENOME.ID
+```
+The first parameter is the path to the genome sequence file and the second paramter is the identifier of this
+genome that you want to use.
 
 ## Run Microcket
 The main program is `microcket` under the same directory as this `README.md` file. You can add its path to
@@ -163,11 +171,10 @@ For testing purpose, we suggest the users try public datasets from literature or
 or [ENCODE project](https://www.encodeproject.org/search/?type=Experiment&assay_title=Hi-C "ENCODE").
 
 ## Outputs explanation
-`Microcket` outputs the final mappable reads in BAM format (with an index) unless '-x' is set, called interactions
-in `hic` format (optionally in an additional `cool` format), and key statistics of the analysis.
+`Microcket` outputs the final mappable reads in `BAM` format (with an index) unless '-x' is set, called interactions
+in `pairs` and `hic` format (optionally in an additional `cool` format), and key statistics of the analysis.
 
 ---
 Please send bug reports to Kun Sun \(sunkun@szbl.ac.cn\).<br />
 Microcket is freely available at
 [https://github.com/hellosunking/Microcket/](https://github.com/hellosunking/Microcket/ "Microcket @ Github").
-
