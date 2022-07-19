@@ -1,4 +1,4 @@
-# Microcket: an extra-fast and flexible tool for 3D genomics data (Hi-C, Micro-C, and derivant protocols) analysis
+# Microcket: an extra-fast and flexible tool for analysis of 3D genomics data (Hi-C, Micro-C, and derivant protocols)
 Version 1.1.0, Jul 2022<br />
 Authors: Yu Zhao, Mengqi Yang, Qin Peng, Leina Lu, Xiaowen Lyu, and Kun Sun \(sunkun@szbl.ac.cn\)<br />
 <br />
@@ -17,8 +17,11 @@ tools:
 - [Samtools](http://www.htslib.org/ "Samtools")
 - [FLASH](http://ccb.jhu.edu/software/FLASH/ "FLASH")
 - [JuicerTools](https://github.com/aidenlab/JuicerTools "JuicerTools")
-- [BWA](https://github.com/lh3/bwa "BWA") (optional)
-- [Pairix](https://github.com/4dn-dcic/pairix "Pairix") (optional)
+
+The following tools are optional:
+- [BWA](https://github.com/lh3/bwa "BWA")
+- [Pairix](https://github.com/4dn-dcic/pairix "Pairix")
+- [cooler](https://github.com/open2c/cooler "cooler")
 
 Pre-compiled executables for these tools are included in `bin/` directory (compiled with `g++ v4.8.5` and linked
 with `libz v1.2.7`. If you could not run them (which is usually caused by low version of `libc++` or `libz` library),
