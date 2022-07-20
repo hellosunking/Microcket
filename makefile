@@ -1,4 +1,4 @@
-all: bin/ktrim.mod bin/krmdup bin/cut.fq.tail bin/sam2pairs
+all: bin/ktrim.mod bin/krmdup bin/krmdup.append bin/krmdup.pipe bin/cut.fq.tail bin/sam2pairs
 
 GXXFlag=-std=c++11 -O2
 
@@ -9,6 +9,14 @@ bin/ktrim.mod: src/preprocess/ktrim.cpp src/preprocess/common.h src/preprocess/u
 bin/krmdup: src/preprocess/krmdup.cpp
 	@echo Build Krmdup
 	@cd src/preprocess/; g++ -fopenmp $(GXXFlag) -o ../../bin/krmdup krmdup.cpp; cd ../../
+
+bin/krmdup.append: src/preprocess/krmdup.append.cpp
+	@echo Build Krmdup.append
+	@cd src/preprocess/; g++ -fopenmp $(GXXFlag) -o ../../bin/krmdup.append krmdup.append.cpp; cd ../../
+
+bin/krmdup.pipe: src/preprocess/krmdup.pipe.cpp
+	@echo Build Krmdup.pipe
+	@cd src/preprocess/; g++ -fopenmp $(GXXFlag) -o ../../bin/krmdup.pipe krmdup.pipe.cpp; cd ../../
 
 bin/cut.fq.tail: src/preprocess/cut.fq.tail.cpp
 	@echo Build cut.fq.tail
