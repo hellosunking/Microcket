@@ -455,12 +455,12 @@ then
 	## a relatively old version of juicer tool will be used to be compatible with UCSC
 	JUICER=$PRG/juicer_tools.ucsc.jar
 	java -Xmx4g -jar $PRG/juicer_tools.ucsc.jar pre \
-		-r $resolution $sid.final.pairs $sid.hic $genome &
+		-r $resolution $sid.final.pairs $sid.hic $GINFO &
 else
 	## newer versions supports "--threads"
 	## but does not speed-up significantly with multi-threads
 	java -Xmx16g -jar $PRG/juicer_tools.jar pre --threads 4 \
-		-r $resolution $sid.final.pairs $sid.hic $genome &
+		-r $resolution $sid.final.pairs $sid.hic $GINFO &
 fi >$sid.juicer.log 2>&1
 
 ## convert to cooler format and do normalization

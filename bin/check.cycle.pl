@@ -20,6 +20,7 @@ if( $readNum<=0 || $fraction>1 ) {
 	exit 10;
 }
 
+$ARGV[0] =~ s/,.*$//;
 if( $ARGV[0] =~ /\.gz$/ ) {
 	open IN, "zcat $ARGV[0] |" or die( "$!" );
 } else {
