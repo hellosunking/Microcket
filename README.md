@@ -13,9 +13,10 @@ For detailed information please refer to the license files under `license` direc
 `Microcket` is written mainly in `C++` for GNU Linux/Unix platforms. `Microcket` depends on the following
 tools:
 
+- [Ktrim](https://github.com/hellosunking/Ktrim "Ktrim")
+- [FLASH](http://ccb.jhu.edu/software/FLASH/ "FLASH")
 - [STAR](https://github.com/alexdobin/STAR "STAR")
 - [Samtools](http://www.htslib.org/ "Samtools")
-- [FLASH](http://ccb.jhu.edu/software/FLASH/ "FLASH")
 - [JuicerTools](https://github.com/aidenlab/JuicerTools "JuicerTools")
 
 The following tools are optional:
