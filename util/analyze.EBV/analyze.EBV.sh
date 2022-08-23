@@ -15,13 +15,19 @@ then
 fi
 
 PRG=`dirname $0`
+pairs=$1
 sid=$2
 
-less $1 | grep -w chrEBV >$sid.EBV.pairs
+if [ ${pairs:0-3} == ".gz" ]
+then
+	zgrep -w chrEBV $pairs >$sid.EBV.pairs
+else
+	grep  -w chrEBV $pairs >$sid.EBV.pairs
+fi
+
 perl $PRG/calc.inter.EBV.matrix.and.circos.pl $sid.EBV.pairs >$sid.EBV2hs.bedgraph 2>$sid.EBV2hs.links
 perl $PRG/calc.loop2EBV.pl $sid.EBV.pairs | sort -k1,1 -k2,2n >$sid.hs2EBV.bedgraph
 
-cp $PRG/../anno/4DN.DCIC.header $sid.chrEBV.intra.pairs 
+cp $PRG/../../anno/4DN.DCIC.header $sid.chrEBV.intra.pairs 
 cat $sid.EBV.pairs | perl -lane 'print if $F[0]!~/^#/ && $F[1] eq "chrEBV"' >>$sid.chrEBV.intra.pairs
-java -jar $PRG/../bin/juicer_tools.jar pre --threads 4 -r 1000,500,200 $sid.chrEBV.intra.pairs $sid.EBV.hic $PRG/EBV.info
-
+java -jar $PRG/../../bin/juicer_tools.jar pre --threads 4 -r 1000,500,200 $sid.chrEBV.intra.pairs $sid.EBV.hic $PRG/EBV.info
