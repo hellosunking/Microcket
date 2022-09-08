@@ -1,4 +1,4 @@
-# Microcket: an extra-fast and flexible tool for analysis of 3D genomics data (Hi-C, Micro-C, and derivant protocols)
+# Microcket: an extra-fast and flexible tool for analysis of 3D genomics data (Hi-C, Micro-C, ChIA-PET, and derivant protocols)
 Version 1.1.0, Jul 2022<br />
 Authors: Yu Zhao, Mengqi Yang, Qin Peng, Leina Lu, Xiaowen Lyu, and Kun Sun \(sunkun@szbl.ac.cn\)<br />
 <br />
