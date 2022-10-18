@@ -6,13 +6,12 @@ Distributed under the
 [GNU General Public License v3.0 \(GPLv3\)](https://www.gnu.org/licenses/gpl-3.0.en.html "GPLv3")
 for personal and academic usage only.<br />
 For detailed information please refer to the license files under `license` directory.
-
 ---
 
 ## Installation
-`Microcket` is written mainly in `C++` for GNU Linux/Unix platforms. After uncompressing the source package,
-installation is finished. `Microcket` does not require any specific hardware or OS. The current version has been tested
-on CentOS (v7.5 and v7.9) with Linux kernel v3.10.0.
+`Microcket` is written mainly in `C++` for GNU Linux/Unix platforms. After uncompressing the source package, installation
+is finished. `Microcket` does not require any specific hardware or OS. The current version has been tested on CentOS v7.5
+with Linux kernel v3.10.0.
 
 `Microcket` depends on the following tools:
 
@@ -27,7 +26,7 @@ The following tools are optional:
 - [Pairix](https://github.com/4dn-dcic/pairix "Pairix")
 - [cooler](https://github.com/open2c/cooler "cooler")
 
-Pre-compiled executables for these tools are included in `bin/` directory (compiled with `g++ v4.8.5` and linked
+Pre-compiled executables for these tools are packaged in `bin/` directory (compiled with `g++ v4.8.5` and linked
 with `libz v1.2.7`. If you could not run them (which is usually caused by low version of `libc++` or `libz` library),
 you may re-compile these programs yourself and replace the ones in the `bin` directory (recommended), then re-compile
 the in-house progams for `Microcket` via:
@@ -36,21 +35,21 @@ user@linux$ make clean && make
 ```
 
 Note that if you want to generate `.cool` format results, you need to install the
-[cooler](https://github.com/open2c/cooler "cooler") package and make sure that it can be called directly from
-the command line (i.e., `which cooler` command returns its path).
+[cooler](https://github.com/open2c/cooler "cooler") package and make sure that it can be called directly from the command
+line (i.e., `which cooler` command returns its path).
 
 ## Pre-requirements
 Before run `Microcket`, genome index must be built and several annotation files are also needed.
 
-To build genome indices, you need the genome sequence in fasta format. For instance, if you want to build indices
-for human genome hg38, you can download it from the UCSC genome browser:
+To build genome indices, you need the genome sequence in fasta format. For instance, if you want to build indices for
+human genome hg38, you can download it from the UCSC genome browser:
 ```
 wget -O hg38.p13.fa.gz https://hgdownload.cse.ucsc.edu/goldenpath/hg38/bigZips/p13/hg38.p13.fa.gz
 gzip -d hg38.p13.fa.gz
 ```
 To build the index for `STAR` (if you want to use `STAR` for the analysis):
 ```
-bin/STAR --runThreadN 32 --runMode genomeGenerate --genomeDir index/STAR/hg38 --genomeFastaFiles hg38.p13.fa
+bin/STAR --runThreadN 16 --runMode genomeGenerate --genomeDir index/STAR/hg38 --genomeFastaFiles hg38.p13.fa
 ```
 To build the index for `BWA` (if you want to use `BWA` for the analysis):
 ```
@@ -58,14 +57,14 @@ bin/bwa index -a bwtsw -p index/BWA/hg38 hg38.p13.fa
 ```
 On the other hand, if you already had built such indices before, you can link them to `index/`.<br />
 
-Besides genome indices, you also need to prepare `XXX.info` and `XXX.sam.header` files and put them under the
-`anno` directory (`XXX` is the genome id). `XXX.info` is a 2-column file recording the lengths of each chromosome
-in the genome, and `XXX.sam.header` is header for SAM/BAM format. Please note that `Microcket` has already
-packaged such files for `hg38` and `mm10` therefore you do not need to do this if you are working on these
-species, and you can refer them as templates for other species/genomes.<br />
+Besides genome indices, you also need to prepare `XXX.info` and `XXX.sam.header` files and put them under the `anno`
+directory (`XXX` is the genome id). `XXX.info` is a 2-column file recording the lengths of each chromosome in the genome,
+and `XXX.sam.header` is header for SAM/BAM format. Please note that `Microcket` has already packaged such files for `hg38`
+and `mm10` therefore you do not need to do this if you are working on these species, and you can refer them as templates
+for other species/genomes.<br />
 
-Moreover, we have prepared a utility program `util/build.index.sh` for this task. You need to prepare a genome
-sequence in fasta format and run this program to build indices:
+Moreover, we have prepared a utility program `util/build.index.sh` for this task. You need to prepare a genome sequence
+in fasta format and run this program to build indices:
 ```
 util/build.index.sh <GENOME.FA> <GENOME.ID>
 ```
@@ -172,18 +171,17 @@ user@linux$ microcket -g mm10 -a bwa -k bgi -t 16 -buc -i /path/to/fq.list.examp
 
 ## Testing dataset
 As most real HiC/Micro-C datasets are very large, we therefore could not include such data in this source package.
-For testing purpose, we prepared a script `run.testing.dataset.sh` that will download a small Hi-C dataset from
-[European Nucleotide Archive](https://www.ebi.ac.uk/ena/browser/view/SRR4094729 "ENA"), build hg38 index if not
-exist, and run Microcket automatically. `Microcket` should output the interaction pairs within 5 minutes, and
-finish the whole analysis (with `hic` and `bam` files generated) in ~10 minutes using 8 threads on a common
-computing machine, but the download time may vary depending on your network speed, and the index-building step
-may take ~1 hour using 16 threads.
+For testing purpose, we prepared a script `run.testing.dataset.sh` that will download a small Hi-C dataset containing
+~14 million reads from [European Nucleotide Archive](https://www.ebi.ac.uk/ena/browser/view/SRR4094729 "ENA"), build
+hg38 index if not exist, and run Microcket automatically. On this dataset, `Microcket` should output the interaction
+pairs within 5 minutes, and finish the whole analysis (with `hic` and `bam` files generated) in ~10 minutes using 8
+threads on a common computing machine, but the file-downloading time may vary depending on your network speed, and the
+index-building step may take ~1 hour using 16 threads.
 
-For comprehensive performance evaluations, we suggest the users try public datasets from literature or consortiums,
+For comprehensive performance evaluations, we suggest the users use public datasets from literature or consortiums,
 e.g., [Rao et al. Cell 2014](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE63525 "Rao et al. Cell 2014"),
 [4D nucleome project](https://data.4dnucleome.org "4DN project"), and
 [ENCODE project](https://www.encodeproject.org/search/?type=Experiment&assay_title=Hi-C "ENCODE").
-
 
 ## Outputs explanation
 `Microcket` outputs the final mappable reads in `BAM` format (with an index) unless '-x' is set, called interactions
