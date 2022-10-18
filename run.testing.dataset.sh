@@ -59,7 +59,7 @@ then
 		fi
 	fi
 
-	$PRG/util/build.index.sh testing/hg38.fa hg38
+	sh $PRG/util/build.index.sh testing/hg38.fa hg38
 	if [ $? != 0 ]
 	then
 		echo ERROR: Build index failed!

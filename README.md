@@ -66,7 +66,7 @@ for other species/genomes.<br />
 Moreover, we have prepared a utility program `util/build.index.sh` for this task. You need to prepare a genome sequence
 in fasta format and run this program to build indices:
 ```
-util/build.index.sh <GENOME.FA> <GENOME.ID>
+sh util/build.index.sh <GENOME.FA> <GENOME.ID>
 ```
 The first parameter is the path to the genome sequence file and the second paramter is the identifier of this
 genome that you want to use.
