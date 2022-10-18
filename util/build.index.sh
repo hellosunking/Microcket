@@ -9,11 +9,12 @@ set -o errexit
 
 if [ $# -lt 2 ]
 then
-	echo "Usage: $0 <genome.fa> <genome.id> [thread=all]" > /dev/stderr
+	echo "Usage: $0 <genome.fa> <genome.id> [thread=all] [target=STAR|both]"
+	echo "Note: gzip-file is NOT acceptable."
 	exit 2
-fi
+fi >/dev/stderr
 
-ver=1.0.0
+ver=1.1.0
 
 PRG=`dirname $0`
 index=$PRG/../index
@@ -23,10 +24,23 @@ anno=$PRG/../anno
 fasta=$1
 gid=$2
 thread=${3:-0}
+target=${4:-STAR}
+BWA=0
 
 if [ $thread == 0 ]
 then
 	thread=`cat /proc/cpuinfo | grep processor | wc -l`
+fi
+
+if [ $target == "both" ] || [ $target == "Both" ] || [ $target == "BOTH" ]
+then
+	BWA=1
+elif [ $target == "star" ] || [ $target == "Star" ] || [ $target == "STAR" ]
+then
+	BWA=0
+else
+	echo "ERROR: Unknown parameter! Must be both or STAR!" >/dev/stderr
+	exit 1
 fi
 
 ## STAR
@@ -35,8 +49,11 @@ mkdir -p $index/STAR/$gid
 $BIN/STAR --runThreadN $thread --runMode genomeGenerate --genomeDir $index/STAR/$gid --genomeFastaFiles $fasta
 
 ## bwa
-echo "======== Build index for BWA  ========"
-$BIN/bwa index -p $index/BWA/$gid $fasta
+if [ $BWA == 1 ]
+then
+	echo "======== Build index for BWA  ========"
+	$BIN/bwa index -p $index/BWA/$gid $fasta
+fi
 
 ## generate sam header
 echo "======== Generating annotation files ========"
