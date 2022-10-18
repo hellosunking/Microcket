@@ -6,6 +6,7 @@ Distributed under the
 [GNU General Public License v3.0 \(GPLv3\)](https://www.gnu.org/licenses/gpl-3.0.en.html "GPLv3")
 for personal and academic usage only.<br />
 For detailed information please refer to the license files under `license` directory.
+
 ---
 
 ## Installation
