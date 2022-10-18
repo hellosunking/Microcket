@@ -10,8 +10,11 @@ For detailed information please refer to the license files under `license` direc
 ---
 
 ## Installation
-`Microcket` is written mainly in `C++` for GNU Linux/Unix platforms. `Microcket` depends on the following
-tools:
+`Microcket` is written mainly in `C++` for GNU Linux/Unix platforms. After uncompressing the source package,
+installation is finished. `Microcket` does not require any specific hardware or OS. The current version has been tested
+on CentOS (v7.5 and v7.9) with Linux kernel v3.10.0.
+
+`Microcket` depends on the following tools:
 
 - [Ktrim](https://github.com/hellosunking/Ktrim "Ktrim")
 - [FLASH](http://ccb.jhu.edu/software/FLASH/ "FLASH")
@@ -169,10 +172,18 @@ user@linux$ microcket -g mm10 -a bwa -k bgi -t 16 -buc -i /path/to/fq.list.examp
 
 ## Testing dataset
 As most real HiC/Micro-C datasets are very large, we therefore could not include such data in this source package.
-For testing purpose, we suggest the users try public datasets from literature or consortiums, e.g.,
-[Rao et al. Cell 2014](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE63525 "Rao et al. Cell 2014"),
-[4D nucleome project](https://data.4dnucleome.org "4DN project"),
-or [ENCODE project](https://www.encodeproject.org/search/?type=Experiment&assay_title=Hi-C "ENCODE").
+For testing purpose, we prepared a script `run.testing.dataset.sh` that will download a small Hi-C dataset from
+[European Nucleotide Archive](https://www.ebi.ac.uk/ena/browser/view/SRR4094729 "ENA"), build hg38 index if not
+exist, and run Microcket automatically. `Microcket` should output the interaction pairs within 5 minutes, and
+finish the whole analysis (with `hic` and `bam` files generated) in ~10 minutes using 8 threads on a common
+computing machine, but the download time may vary depending on your network speed, and the index-building step
+may take ~1 hour using 16 threads.
+
+For comprehensive performance evaluations, we suggest the users try public datasets from literature or consortiums,
+e.g., [Rao et al. Cell 2014](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE63525 "Rao et al. Cell 2014"),
+[4D nucleome project](https://data.4dnucleome.org "4DN project"), and
+[ENCODE project](https://www.encodeproject.org/search/?type=Experiment&assay_title=Hi-C "ENCODE").
+
 
 ## Outputs explanation
 `Microcket` outputs the final mappable reads in `BAM` format (with an index) unless '-x' is set, called interactions
