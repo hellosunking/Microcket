@@ -86,7 +86,7 @@ Usage: microcket [options] -i <fq.list> -o <sid>
 
 Authors : Yu Zhao, Mengqi Yang, Qin Peng, Leina Lu, Xiaowen Lyu, and Kun Sun
 Software: Kun Sun (sunkun@szbl.ac.cn)
-Version: 1.1.0, Jul 2022
+Version : 1.1.0, Jul 2022
 
 Microcket is an extra-fast and flexible toolkit for Hi-C/Micro-C data analysis.
 It has been specifically optimized for long-cycle (100 or longer) Micro-C data.
@@ -144,7 +144,7 @@ file as follows:
 /path/to/lane2.read1.fq.gz	/path/to/lane2.read2.fq.gz
 ```
 
-Surppose your data is for human, and your sample id is `test.sample1`, then you can run `Microcket` using
+Suppose your data is for human, and your sample id is `test.sample1`, then you can run `Microcket` using
 the following command:
 
 ```
@@ -174,10 +174,10 @@ user@linux$ microcket -g mm10 -a bwa -k bgi -t 16 -buc -i /path/to/fq.list.examp
 As most real HiC/Micro-C datasets are very large, we therefore could not include such data in this source package.
 For testing purpose, we prepared a script `run.testing.dataset.sh` that will download a small Hi-C dataset containing
 ~14 million reads from [European Nucleotide Archive](https://www.ebi.ac.uk/ena/browser/view/SRR4094729 "ENA"), build
-hg38 index if not exist, and run Microcket automatically. On this dataset, `Microcket` should output the interaction
-pairs within 5 minutes, and finish the whole analysis (with `hic` and `bam` files generated) in ~10 minutes using 8
-threads on a common computing machine, but the file-downloading time may vary depending on your network speed, and the
-index-building step may take ~1 hour using 16 threads.
+hg38 index (if it doesnot exist), and run Microcket automatically. On this dataset, `Microcket` should output the
+interaction pairs within 5 minutes and finish the whole analysis (with `hic` and `bam` files generated) in ~10 minutes
+using 8 threads on a common computing machine, but the file-downloading time may vary depending on your network speed,
+and the index-building step may take ~1 hour using 16 threads.
 
 For comprehensive performance evaluations, we suggest the users use public datasets from literature or consortiums,
 e.g., [Rao et al. Cell 2014](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE63525 "Rao et al. Cell 2014"),
