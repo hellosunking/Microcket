@@ -1,4 +1,4 @@
-## Scripts used during benchmark evaluations
+# Scripts used during benchmark evaluations
 
 Most scripts require parameters; the users could call them without parameter to see the usage.
 
@@ -28,7 +28,7 @@ Files that were used to count running time are indicated in these scripts.
 - plot.loop.overlap.R
 
 ## Other scripts and files
-- filter.Juicer.pl: used to filter Juicer's result and get a "pairs" file
+- filter.Juicer.pl: used to filter Juicer's result and generate a "pairs" file
 - example.fq.list: used by Microcket, run.juicer.sh, run.fanc.sh, and run.Distiller.sh
 - example.HiC-Pro.conf: used by run.HiC-Pro.sh
 - example.hicup.conf: used by run.HiCUP.sh
