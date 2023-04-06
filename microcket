@@ -7,7 +7,7 @@ set -o nounset
 set -o errexit
 
 ## First public version after numerous revisions and optimizations
-VERSION="1.1.0, Jul 2022"
+VERSION="1.1.1, Apr 2023"
 
 function usage() {
 echo -e "
@@ -22,27 +22,29 @@ It has been specifically optimized for long-cycle (100 or longer) reads.
 
 Options:
   -i fq.list   Specify an input file recording paths to fastq files
-                   Multiple lanes of data are supported; gzip-ed files are also supported.
-  -o sid       Set sample id, which will be used as prefix of all output files.
+                   Multiple lanes of data are supported; gzip-ed files are also supported
+  -o sid       Set sample id, which will be used as prefix of all output files
 
   -b           Set this flag to keep inter-lane duplications (e.g., biological replicates)
-  -m mode      Set read stitch mode. Default: auto.
+  -m mode      Set read stitch mode. Default: auto
                    Supports yes, no, auto
 
-  -g genome    Set genome. Default hg38.
-  -a aligner   Set underline aligner. Default: STAR.
+  -g genome    Set genome. Default hg38
+  -a aligner   Set underline aligner. Default: STAR
                    Supports STAR, BWA, STAR-BWA, BWA-STAR
-  -k kit       Set sequencing kit for adaptor-trimming. Default: illumina.
-                   Supports bgi, illumina, nextera.
+  -N           Set to disable splicing-aware mode of STAR
+  -k kit       Set sequencing kit for adaptor-trimming. Default: illumina
+                   Supports bgi, illumina, nextera
 
   -r r1[,r2]   Set resolutions in hic file (use ',' to separate multiple values)
                    Default: 2500000,1000000,500000,250000,100000,50000,25000,10000,5000
+                   If the parameter starts with ',', it will be added to the default resolutions
   -u           Set to generate UCSC-compatible hic files (\e[4mslower\e[0m)
   -c           Set to generate cool files (require \e[3mcooler\e[m package; \e[4mtakes time\e[0m)
-                   Note: the smallest bin in '-r' will be used during cool file generation.
-  -x           Set to skip BAM file generation.
+                   Note: the smallest bin in '-r' will be used during cool file generation
+  -x           Set to skip BAM file generation
 
-  -t thread    Set running threads.
+  -t thread    Set running threads
                    Default: all threads available (\e[1;34mrequire >=4\e[0m)
 
   -q           Set this flag to run in quiet mode (only report fatal errors)
@@ -76,6 +78,7 @@ seqKit="illumina"
 catmod="auto"
 thread=0
 resolution="2500000,1000000,500000,250000,100000,50000,25000,10000,5000"
+enableSplicing="yes"
 ucscHic="no"
 cooler="no"
 quietmode="no"
@@ -102,6 +105,8 @@ do
 		r)resolution="$OPTARG"
 			;;
 		t)thread="$OPTARG"
+			;;
+		N)enableSplicing="no"
 			;;
 		b)biorep="yes"
 			;;
@@ -144,6 +149,12 @@ if [ ! -s "$infile" ]
 then
 	echo "ERROR: input file does not exist!" >/dev/stderr
 	exit 3
+fi
+
+if [ ${resolution:0:1} == "," ]
+then
+	resolution="2500000,1000000,500000,250000,100000,50000,25000,10000,5000$resolution"
+	[ $quietmode == "yes" ] || echo "INFO: resolution is set to $resolution."
 fi
 
 ## check aligner and index
@@ -293,6 +304,13 @@ minIntron=20
 maxIntron=10000
 minChim=20
 
+if [ $enableSplicing == "yes" ]
+then
+	STAR_splicing_param="--alignIntronMin $minIntron --alignIntronMax $maxIntron"
+else
+	STAR_splicing_param="--alignIntronMax 1"
+fi
+
 ## start analysis
 datetime=`date`
 [ $quietmode == "yes" ] || echo "########## Microcket starts on $datetime ##########"
@@ -374,6 +392,13 @@ else	## biological repolicates; including multi-index during library preparation
 	fi
 fi
 
+## check Ktrim combo
+if [ ! -s $sid.trim.log ]
+then
+	echo "ERROR: Preprocessing failed! Please check your fq.list file!" >/dev/stderr
+	exit 1
+fi
+
 ## alignment
 cp $ANNO/4DN.DCIC.header $sid.final.pairs
 if [ $DoSTITCH == "yes" ]
@@ -389,12 +414,11 @@ then
 			--outFileNamePrefix $sid.STAR/flash. \
 			--outSAMtype BAM Unsorted \
 			--outSAMunmapped None --outSAMattributes Standard \
-			--alignIntronMin $minIntron --alignIntronMax $maxIntron \
-			--scoreGapNoncan 4 \
+			$STAR_splicing_param --scoreGapNoncan 4 \
 			--chimOutType WithinBAM --chimSegmentMin $minChim >$sid.STAR/flash.run.log
 
 		[ $quietmode == "yes" ] || echo "Generate pairs ..."
-		$PRG/samtools view -@ $left_thread $sid.STAR/flash.Aligned.out.bam | $PRG/sam2pairs /dev/stdin flash $sid $left_thread | \
+		$PRG/samtools view -@ $left_thread $sid.STAR/flash.Aligned.out.bam | $PRG/sam2pairs /dev/stdin flash $sid $thread | \
 			LANG=C sort -k2,2d -k4,4d -k3,3n -k5,5n --parallel=$thread -S 50% >$sid.flash.pairs
 	else	## BWA
 		[ $quietmode == "yes" ] || echo "Map stitched reads using BWA and generate pairs ..."
@@ -412,6 +436,7 @@ else
 fi
 
 ## alignment on uncombined reads
+## NOTE: sort supports parallel from v8.11
 if [ $aligner_unc == "STAR" ]
 then
 	[ $quietmode == "yes" ] || echo "Map un-stitched reads using STAR ..."
@@ -422,12 +447,11 @@ then
 		--outFileNamePrefix $sid.STAR/unc. \
 		--outSAMtype BAM Unsorted \
 		--outSAMunmapped None --outSAMattributes Standard \
-		--alignIntronMin $minIntron --alignIntronMax $maxIntron \
-		--scoreGapNoncan 4 \
+		$STAR_splicing_param --scoreGapNoncan 4 \
 		--chimOutType WithinBAM --chimSegmentMin $minChim >$sid.STAR/unc.run.log
 
 	[ $quietmode == "yes" ] || echo "Generate pairs ..."
-	$PRG/samtools view -@ $left_thread $sid.STAR/unc.Aligned.out.bam | $PRG/sam2pairs /dev/stdin unc $sid $left_thread | \
+	$PRG/samtools view -@ $left_thread $sid.STAR/unc.Aligned.out.bam | $PRG/sam2pairs /dev/stdin unc $sid $thread | \
 		LANG=C sort -k2,2d -k4,4d -k3,3n -k5,5n --parallel=$thread -S 50% >>$uncfile
 else
 	[ $quietmode == "yes" ] || echo "Map un-stitched reads using BWA and generate pairs ..."
@@ -463,7 +487,7 @@ else
 		-r $resolution $sid.final.pairs $sid.hic $GINFO &
 fi >$sid.juicer.log 2>&1
 
-## convert to cooler format and do normalization
+## convert to cooler format and do normalization, slow
 if [ $cooler == "yes" ]
 then
 	[ $quietmode == "yes" ] || echo "Convert to cool format (please be patient) ..."
@@ -490,8 +514,8 @@ if [ $skipBam == "no" ]
 then
 	[ $quietmode == "yes" ] || echo "Generate filtered alignment results (please be patient) ..."
 	touch $sid.flash.sam
-	cat $samheader $sid.flash.sam $sid.unc.sam | $PRG/samtools view -@ $left_thread --no-PG -b - | \
-		$PRG/samtools sort -@ $sort_thread -m 2G --no-PG -o $sid.valid.bam - 2>/dev/null
+	cat $samheader $sid.flash.sam $sid.unc.sam | $PRG/samtools view -@ $left_thread --no-PG -b /dev/stdin | \
+		$PRG/samtools sort -@ $sort_thread -m 4G --no-PG -o $sid.valid.bam /dev/stdin 2>/dev/null
 	$PRG/samtools index -@ $thread $sid.valid.bam
 fi
 

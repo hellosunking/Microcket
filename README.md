@@ -1,5 +1,5 @@
 # Microcket: an extra-fast and vesatile tool for analysis of 3D genomics data (Hi-C, Micro-C, ChIA-PET, and derivant protocols)
-Version 1.1.0, Jul 2022<br />
+Version 1.1.1, Apr 2023<br />
 Authors: Yu Zhao, Mengqi Yang, Qin Peng, Leina Lu, Xiaowen Lyu, and Kun Sun \(sunkun@szbl.ac.cn\)<br />
 <br />
 Distributed under the
@@ -86,7 +86,7 @@ Usage: microcket [options] -i <fq.list> -o <sid>
 
 Authors : Yu Zhao, Mengqi Yang, Qin Peng, Leina Lu, Xiaowen Lyu, and Kun Sun
 Software: Kun Sun (sunkun@szbl.ac.cn)
-Version : 1.1.0, Jul 2022
+Version : 1.1.1, Apr 2023
 
 Microcket is an extra-fast and flexible toolkit for Hi-C/Micro-C data analysis.
 It has been specifically optimized for long-cycle (100 or longer) Micro-C data.
@@ -105,11 +105,13 @@ Options:
   -g genome    Set genome. Default hg38.
   -a aligner   Set underline aligner. Default: STAR.
                    Supports STAR, BWA, STAR-BWA, BWA-STAR
+  -N           Set to disable splicing-aware mode of STAR
   -k kit       Set sequencing kit for adaptor-trimming. Default: illumina.
                    Supports bgi, illumina, nextera
 
   -r r1[,r2]   Set resolutions in hic file (use ',' to separate multiple values)
-               Default: 2500000,1000000,500000,250000,100000,50000,25000,10000,5000
+                   Default: 2500000,1000000,500000,250000,100000,50000,25000,10000,5000
+                   If the parameter starts with ',', it will be added to the default resolutions
   -u           Set this flag to generate UCSC-compatible hic files (slower)
   -c           Set this flag to generate cool files (requires cooler)
                    Note: the smallest bin in '-r' will be used during cool file generation.
