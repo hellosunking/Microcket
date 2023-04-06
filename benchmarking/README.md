@@ -1,6 +1,6 @@
 ## Scripts used during benchmark evaluations
 
-Most scripts require parameters, and the users could call them without parameter to see the usage.
+Most scripts require parameters; the users could call them without parameter to see the usage.
 
 ## The following scripts are used to run the software
 - run.juicer.sh
@@ -20,9 +20,8 @@ Files that were used to count running time are indicated in these scripts.
 - make.fanc.stat.pl
 - make.Distiller.stat.pl
 
-## The following script is used to check the consistency and interaction distribution in 2 "pairs" files
-- check.consistency.pl
-Note that this program requires LOTS of memory.
+## The following script is used to check the consistency and distributions in 2 "pairs" files
+- check.consistency.pl (Please note that this program requires LOTS of memory)
 
 ## The following scripts are used to call loops and draw venn-plots on IMR90 cell line Hi-C data
 - call.loop.sh
