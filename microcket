@@ -504,18 +504,18 @@ fi
 ## generate final mapping results
 if [ $thread -ge 8 ]
 then
-	left_thread=6
-else
 	left_thread=4
+else
+	left_thread=2
 fi
-let sort_thread=$thread-$left_thread
+#let sort_thread=$thread-$left_thread
 
 if [ $skipBam == "no" ]
 then
 	[ $quietmode == "yes" ] || echo "Generate filtered alignment results (please be patient) ..."
 	touch $sid.flash.sam
 	cat $samheader $sid.flash.sam $sid.unc.sam | $PRG/samtools view -@ $left_thread --no-PG -b /dev/stdin | \
-		$PRG/samtools sort -@ $sort_thread -m 4G --no-PG -o $sid.valid.bam /dev/stdin 2>/dev/null
+		$PRG/samtools sort -@ $thread --no-PG -o $sid.valid.bam /dev/stdin 2>/dev/null
 	$PRG/samtools index -@ $thread $sid.valid.bam
 fi
 
