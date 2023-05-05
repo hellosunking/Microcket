@@ -87,7 +87,7 @@ showHelp="no"
 skipBam="no"
 
 ## parse parameters
-while getopts ":i:o:g:a:k:m:r:t:bucxqvh" OPTION
+while getopts ":i:o:g:a:k:m:r:t:Nbucxqvh" OPTION
 do
 	case $OPTION in
 		i)infile="$OPTARG"
