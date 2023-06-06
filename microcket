@@ -79,22 +79,22 @@ ANNO="$MDR/anno"
 infile=""
 sid=""
 
-biorep="no"
 genome="hg38"
 aligner="BWA"
-enableSplicing="no"
 seqKit="illumina"
 catmod="auto"
 thread=0
 resolution="2500000,1000000,500000,250000,100000,50000,25000,10000,5000"
 completeMappingRatio=0.5
 minMapQ=10
+biorep="no"
+enableSplicing="no"
 ucscHic="no"
 cooler="no"
 quietmode="no"
 showVer="no"
 showHelp="no"
-writeBam=1
+writeBam="yes"
 
 ## parse parameters
 while getopts ":i:o:g:a:k:m:r:e:Q:t:Sbucxqvh" OPTION
@@ -128,7 +128,7 @@ do
 			;;
 		c)cooler="yes"
 			;;
-		x)writeBam=0
+		x)writeBam="no"
 			;;
 		q)quietmode="yes"
 			;;
@@ -221,7 +221,7 @@ then
 	aligner_flash="BWA"
 	aligner_unc="STAR"
 else
-	echo "ERROR: Unsupported aligner! Currently mdancer supports STAR, BWA, STAR-BWA, or BWA-STAR." >/dev/stderr
+	echo "ERROR: Unsupported aligner! Currently Microcket only supports STAR, BWA, STAR-BWA, or BWA-STAR." >/dev/stderr
 	exit 10
 fi
 
@@ -506,13 +506,13 @@ then
 fi
 
 ## generate final mapping results
-if [ $writeBam == 1 ]
+if [ $writeBam == "yes" ]
 then
 	[ $quietmode == "yes" ] || echo "Generate filtered alignment results (please be patient) ..."
 	touch $sid.flash.sam
 	cat $samheader $sid.flash.sam $sid.unc.sam | $PRG/samtools view -@ $vthread --no-PG -b /dev/stdin | \
-	$PRG/samtools sort -@ $thread -m 4G --no-PG --write-index -o $sid.valid.bam /dev/stdin 2>/dev/null
-#	$PRG/samtools index -@ $thread $sid.valid.bam
+	$PRG/samtools sort -@ $thread -m 2G --no-PG -o $sid.valid.bam /dev/stdin 2>/dev/null
+	$PRG/samtools index -@ $thread $sid.valid.bam
 fi
 wait
 
