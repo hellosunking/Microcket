@@ -17,6 +17,9 @@ fi > /dev/stderr
 conf=$1
 OUTDIR=$2
 
+currSHELL=`readlink -f $0`
+PRG=`dirname $currSHELL`
+hicup2pairs=$PRG/hicup2pairs
 HICUP=/mnt/software/HiCUP-0.8.3
 
 mkdir -p $OUTDIR
@@ -25,8 +28,8 @@ $HICUP/hicup --config $conf
 
 cd $OUTDIR
 touch HiCUP.aligned
-## there could be more than 1 sam files
-cat *sam | $HICUP/Conversion/hicup2juicer -
+## convert to pairs format
+perl $hicup2pairs *sam >HiCUP.pairs
 touch HiCUP.end
 
 ## files to check running time:

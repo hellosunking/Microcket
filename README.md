@@ -1,5 +1,5 @@
 # Microcket: an extra-fast and vesatile tool for analysis of 3D genomics data (Hi-C, Micro-C, ChIA-PET, and derivant protocols)
-Version 1.1.1, Apr 2023<br />
+Version 1.2.0, Jun 2023<br />
 Authors: Yu Zhao, Mengqi Yang, Qin Peng, Leina Lu, Xiaowen Lyu, and Kun Sun \(sunkun@szbl.ac.cn\)<br />
 <br />
 Distributed under the
@@ -86,7 +86,7 @@ Usage: microcket [options] -i <fq.list> -o <sid>
 
 Authors : Yu Zhao, Mengqi Yang, Qin Peng, Leina Lu, Xiaowen Lyu, and Kun Sun
 Software: Kun Sun (sunkun@szbl.ac.cn)
-Version : 1.1.1, Apr 2023
+Version : 1.2.0, Jun 2023
 
 Microcket is an extra-fast and flexible toolkit for Hi-C/Micro-C data analysis.
 It has been specifically optimized for long-cycle (100 or longer) Micro-C data.
@@ -99,15 +99,18 @@ Parameters:
 
 Options:
   -b           Set this flag to keep inter-lane duplications (e.g., biological replicates)
+  -k kit       Set sequencing kit for adaptor-trimming. Default: illumina.
+                   Supports bgi, illumina, nextera
   -m mode      Set read stitch mode. Default: auto.
                    Supports yes, no, auto
 
   -g genome    Set genome. Default hg38.
-  -a aligner   Set underline aligner. Default: STAR.
+  -a aligner   Set underline aligner. Default: BWA
                    Supports STAR, BWA, STAR-BWA, BWA-STAR
-  -N           Set to disable splicing-aware mode of STAR
-  -k kit       Set sequencing kit for adaptor-trimming. Default: illumina.
-                   Supports bgi, illumina, nextera
+  -S           Set to enable splicing-aware mode of STAR
+  -e VALUE     Set the minimum alignable proportion of a read to consider as complete mapping
+                   Default: 0.5. Must be a number between 0 and 1.
+  -Q VALUE     Set the minimum mapping quality for a read to be considered. Default: 10
 
   -r r1[,r2]   Set resolutions in hic file (use ',' to separate multiple values)
                    Default: 2500000,1000000,500000,250000,100000,50000,25000,10000,5000
@@ -156,7 +159,7 @@ user@linux$ microcket -i /path/to/fq.list.example1 -o test.sample1
 ### Example 2
 You are working on mouse cells and you want to use `mm10` as the reference genome; you have constructed 3
 biological replicates and sequenced them on a BGI sequencer (and replicate 1 has two lanes); you want to use
-`BWA` as the underline aligner; you want to visualize the `hic` result in UCSC genome browser and a `cool`
+`STAR` as the underline aligner; you want to visualize the `hic` result in UCSC genome browser and a `cool`
 format result for other tools; you want to use 16 CPUs in your computing server; you have prepared a
 `fq.list.example2` as follows:
 
@@ -169,7 +172,7 @@ format result for other tools; you want to use 16 CPUs in your computing server;
 
 then you can run the analysis using the following command:
 ```
-user@linux$ microcket -g mm10 -a bwa -k bgi -t 16 -buc -i /path/to/fq.list.example2 -o test.sample2
+user@linux$ microcket -g mm10 -a star -k bgi -t 16 -buc -i /path/to/fq.list.example2 -o test.sample2
 ```
 
 ## Testing dataset

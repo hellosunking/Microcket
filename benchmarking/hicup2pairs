@@ -1,0 +1,121 @@
+#!/usr/bin/perl
+use strict;
+use warnings;
+
+##########################################################
+unless(@ARGV) {
+	print STDERR "Usage: hicup2pairs [SAM/BAM FILES ...] >out.pairs\n
+This program is adapted from HiCUP to convert SAM/BAM to pairs format.
+NOTE: This program will use a HUGE amount of memory (~100GB for ~300M aligned reads).
+HiCUP homepage: www.bioinformatics.babraham.ac.uk/projects/hicup\n\n";
+    exit 2;
+}
+
+##########################################################
+#Parse data
+my %grouped_ditags_blocs;
+my @files = @ARGV;    #Pass file names as command-line arguments
+
+foreach my $file (@files) {
+	print STDERR "Loading $file\n";
+	if( $file =~ /\.bam$/ ) {
+		open IN, "samtools view $file |" or die "Couldn't read $file: $!";
+	} else {
+		open IN, $file or die "Could not open $file\n";
+	}
+
+	while( <IN> ) {
+		next if /^@/;   #Remove SAM header lines
+	    my $readF = $_;
+	    my $readR = scalar <IN>;
+
+		my ($chromosomeF, $positionF, $strandF) = get_csome_position( $readF );
+		my ($chromosomeR, $positionR, $strandR) = get_csome_position( $readR );
+	
+		my $rid = (split("\t", $readF, 2))[0];
+		my $mapqF = (split("\t", $readF, 6))[4];
+		my $mapqR = (split("\t", $readR, 6))[4];
+	
+		my $ditag;
+		my $ditag_bloc;
+	
+		my $labelF = $chromosomeF . '_' . $positionF;
+		my $labelR = $chromosomeR . '_' . $positionR;
+	
+		if( ($labelF cmp $labelR) == 1 ){
+			$ditag_bloc = join('_', ($chromosomeR, $chromosomeF, $positionR, $positionF, $strandR, $strandF));
+#			$ditag = "$strandR\t$chromosomeR\t$positionR\t0\t$strandF\t$chromosomeF\t$positionF\t1\t$mapqR\t$mapqF";
+			$ditag = "$rid\t$chromosomeR\t$positionR\t$chromosomeF\t$positionF\t$strandR\t$strandF";
+		} else {
+			$ditag_bloc = join('_', ($chromosomeF, $chromosomeR, $positionF, $positionR, $strandF, $strandR));
+#			$ditag = "$strandF\t$chromosomeF\t$positionF\t0\t$strandR\t$chromosomeR\t$positionR\t1\t$mapqF\t$mapqR";
+			$ditag = "$rid\t$chromosomeF\t$positionF\t$chromosomeR\t$positionR\t$strandF\t$strandR";
+		}
+
+		push( @{ $grouped_ditags_blocs{$ditag_bloc} }, $ditag);
+	}
+	close IN;
+}
+
+print STDERR "\nWriting pairs ...\n";
+foreach my $ditags_bloc (sort keys %grouped_ditags_blocs) {
+	foreach my $ditag ( @{ $grouped_ditags_blocs{$ditags_bloc} } ) {
+		print "$ditag\n";
+	}
+}
+
+print STDERR "\nProcessing complete.\n";
+#exit (0);
+
+###############################################################################
+#Subroutines
+###############################################################################
+#get_csome_position
+#Takes a SAM read and returns the chromosome and the sonication point of the ditag
+#and the strand (positive (0) or negative (1))
+sub get_csome_position{
+	my $read = shift;
+
+	my @l = split/\t/, $read;
+	my $csome  = $l[2];
+	my $pos    = $l[3];
+	my $cigar  = $l[5];
+	my $strand = $l[1];
+
+	unless($strand & 0x10){    #Positive strand
+		return ($csome, $pos, '+');
+	}
+
+    #Negative strand - process CIGAR string
+	my $three_prime = $pos - 1; # need to adjust this only once
+
+	# for InDel free matches we can simply use the M number in the CIGAR string
+	if ($cigar =~ /^(\d+)M$/){ # linear match
+		$three_prime  += $1;
+	}
+
+	# parsing CIGAR string
+	my @len = split (/\D+/,$cigar); # storing the length per operation
+	my @ops = split (/\d+/,$cigar); # storing the operation
+	shift @ops; # remove the empty first element
+	die "CIGAR string contained a non-matching number of lengths and operations ($cigar)\n" unless (scalar @len == scalar @ops);
+
+	# warn "CIGAR string; $cigar\n";
+	### determining end position of the read
+	foreach my $index(0..$#len){
+	    if ($ops[$index] eq 'M'){  # standard matching bases
+			$three_prime += $len[$index];
+			# warn "Operation is 'M', adding $len[$index] bp\n";
+		} elsif($ops[$index] eq 'I'){ # insertions do not affect the end position
+			# warn "Operation is 'I', next\n";
+		} elsif($ops[$index] eq 'D'){ # deletions do affect the end position
+			# warn "Operation is 'D',adding $len[$index] bp\n";
+			$three_prime += $len[$index];
+		} else{
+			die "Found CIGAR operations other than M, I or D: '$ops[$index]'. Not allowed at the moment\n";
+		}
+	}
+
+	return ($csome, $three_prime, '-');
+}
+

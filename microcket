@@ -1,13 +1,18 @@
 #!/bin/bash
 #
 # Author: Kun Sun @ SZBL (sunkun@szbl.ac.cn)
-# Date  : 2022.7.12
+# Date  : 2023.6.12
 #
 set -o nounset
 set -o errexit
 
-## First public version after numerous revisions and optimizations
-VERSION="1.1.1, Apr 2023"
+VERSION="1.2.0, Jun 2023"
+
+## changes in v1.2:
+## Add option "-e" to set completeMappingRatio
+## Add option "-Q" to set min mapQ
+## Pipe FLASH outputs with cut
+## Change the default aligner to BWA
 
 function usage() {
 echo -e "
@@ -22,27 +27,30 @@ It has been specifically optimized for long-cycle (100 or longer) reads.
 
 Options:
   -i fq.list   Specify an input file recording paths to fastq files
-                   Multiple lanes of data are supported; gzip-ed files are also supported
+                   Multiple lanes of data are supported; gzip-ed files are also supported.
   -o sid       Set sample id, which will be used as prefix of all output files
 
+  -g genome    Set genome. Default hg38.
   -b           Set this flag to keep inter-lane duplications (e.g., biological replicates)
+  -k kit       Set sequencing kit for adaptor-trimming. Default: illumina
+                   Supports bgi, illumina, nextera.
   -m mode      Set read stitch mode. Default: auto
                    Supports yes, no, auto
 
-  -g genome    Set genome. Default hg38
-  -a aligner   Set underline aligner. Default: STAR
+  -a aligner   Set underline aligner. Default: BWA
                    Supports STAR, BWA, STAR-BWA, BWA-STAR
-  -N           Set to disable splicing-aware mode of STAR
-  -k kit       Set sequencing kit for adaptor-trimming. Default: illumina
-                   Supports bgi, illumina, nextera
+  -S           Set to enable splicing-aware mode of STAR
+  -e VALUE     Set the minimum alignable proportion of a read to consider as complete mapping
+                   Default: 0.5. Must be a number between 0 and 1.
+  -Q VALUE     Set the minimum mapping quality for a read to be considered. Default: 10
 
   -r r1[,r2]   Set resolutions in hic file (use ',' to separate multiple values)
                    Default: 2500000,1000000,500000,250000,100000,50000,25000,10000,5000
-                   If the parameter starts with ',', it will be added to the default resolutions
+                   Note: if your parameter starts with ',', I will add it to the default values
   -u           Set to generate UCSC-compatible hic files (\e[4mslower\e[0m)
   -c           Set to generate cool files (require \e[3mcooler\e[m package; \e[4mtakes time\e[0m)
-                   Note: the smallest bin in '-r' will be used during cool file generation
-  -x           Set to skip BAM file generation
+                   Note: the smallest bin in '-r' will be used during cool file generation.
+  -x           Set to skip BAM file generation.
 
   -t thread    Set running threads
                    Default: all threads available (\e[1;34mrequire >=4\e[0m)
@@ -73,21 +81,23 @@ sid=""
 
 biorep="no"
 genome="hg38"
-aligner="STAR"
+aligner="BWA"
+enableSplicing="no"
 seqKit="illumina"
 catmod="auto"
 thread=0
 resolution="2500000,1000000,500000,250000,100000,50000,25000,10000,5000"
-enableSplicing="yes"
+completeMappingRatio=0.5
+minMapQ=10
 ucscHic="no"
 cooler="no"
 quietmode="no"
 showVer="no"
 showHelp="no"
-skipBam="no"
+writeBam=1
 
 ## parse parameters
-while getopts ":i:o:g:a:k:m:r:t:Nbucxqvh" OPTION
+while getopts ":i:o:g:a:k:m:r:e:Q:t:Sbucxqvh" OPTION
 do
 	case $OPTION in
 		i)infile="$OPTARG"
@@ -104,9 +114,13 @@ do
 			;;
 		r)resolution="$OPTARG"
 			;;
+		e)completeMappingRatio="$OPTARG"
+			;;
+		Q)minMapQ="$OPTARG"
+			;;
 		t)thread="$OPTARG"
 			;;
-		N)enableSplicing="no"
+		s)enableSplicing="yes"
 			;;
 		b)biorep="yes"
 			;;
@@ -114,7 +128,7 @@ do
 			;;
 		c)cooler="yes"
 			;;
-		x)skipBam="yes"
+		x)writeBam=0
 			;;
 		q)quietmode="yes"
 			;;
@@ -239,14 +253,6 @@ then
 	exit 12
 fi
 
-## thread for pipes
-if [ $thread -ge 8 ]
-then
-	left_thread=4
-else
-	left_thread=2
-fi
-let right_thread=$thread-$left_thread
 
 ## due to version issue, I have included pre-complied flash, samtools, STAR, bwa in this package
 ## check cooler, which is a python package and could NOT be included here
@@ -298,17 +304,14 @@ then
 fi
 
 ## parameters for STAR
-##minConcatCycle=99
-minConcatCycle=120
 minIntron=20
 maxIntron=10000
 minChim=20
-
 if [ $enableSplicing == "yes" ]
 then
-	STAR_splicing_param="--alignIntronMin $minIntron --alignIntronMax $maxIntron"
+	STARparam="--genomeDir $sindex --runThreadN $thread --outSAMtype BAM Unsorted --chimOutType WithinBAM --outBAMcompression 0 --outSAMunmapped None --outSAMattributes Standard --alignIntronMin $minIntron --alignIntronMax $maxIntron --scoreGapNoncan 4 --chimScoreJunctionNonGTAG 0 --chimSegmentMin $minChim"
 else
-	STAR_splicing_param="--alignIntronMax 1"
+	STARparam="--genomeDir $sindex --runThreadN $thread --outSAMtype BAM Unsorted --chimOutType WithinBAM --outBAMcompression 0 --outSAMunmapped None --outSAMattributes Standard --alignIntronMax 1 --scoreGapNoncan 4 --chimScoreJunctionNonGTAG 0 --chimSegmentMin $minChim"
 fi
 
 ## start analysis
@@ -316,11 +319,19 @@ datetime=`date`
 [ $quietmode == "yes" ] || echo "########## Microcket starts on $datetime ##########"
 
 [ $quietmode == "yes" ] || echo "Check stitch strategy ..."
+##minConcatCycle=99
+minConcatCycle=120
 ## in auto mode: check read cycle, if too short, i.e., < 100, then do not do flash combine
 ## for HiC, most protocols generate ~400 bp fragments therefore PE150 could not read through
+## TODO: add file.existence check in check.cycle.pl
 if [ $catmod == "auto" ]
 then
-	seqCycle=`perl $PRG/check.cycle.pl $R1fq`
+	seqCycle=`perl $PRG/check.cycle.pl $infile`
+	if [ $? != 0 ]	## error occurs
+	then
+		exit $?
+	fi
+
 	if [ $seqCycle -lt $minConcatCycle ]
 	then
 		[ $quietmode == "yes" ] || echo "INFO: input reads are too short, read stitch will be skipped."
@@ -339,6 +350,7 @@ else
 fi
 
 ## read preprocessing
+## NOTE: Ktrim v1.5.0 or higher is required
 kthread=4
 [ $thread -ge 8 ] && kthread=6
 if [ $biorep == "no" ]
@@ -347,13 +359,17 @@ then
 	## the modified combo is 3x faster than the normal ktrim+krmdup
 	if [ $DoSTITCH == "yes" ] 
 	then
-		$PRG/ktrim.mod -k $seqKit -t $kthread -o $sid -1 $R1fq -2 $R2fq | $PRG/krmdup.pipe -i /dev/stdin -o $sid.rmdup | \
-			$PRG/flash --interleaved-input -m 10 -M 150 -t $thread -o $sid.flash - >$sid.flash.log
+		$PRG/ktrim -c -k $seqKit -t $kthread -o $sid -1 $R1fq -2 $R2fq -c | \
+		$PRG/krmdup.pipe -i /dev/stdin -o $sid.rmdup | \
+		$PRG/flash -q --interleaved-input -m 10 -M 150 -t $thread -o $sid.flash -To -c - | \
+		perl $PRG/deal.flash.pl - $sid
 		## cut the tailing 10 cycles in notCombined reads
 		## This is because flash will not combine those with < 10 bp overlap
-		$PRG/cut.fq.tail $sid.flash.notCombined_1.fastq $sid.flash.notCombined_2.fastq $sid.cut &
 	else
-		$PRG/ktrim.mod -k $seqKit -t $kthread -o $sid -1 $R1fq -2 $R2fq | $PRG/krmdup -i /dev/stdin -o $sid.rmdup
+		rm -f $sid.rmdup.read1.fq $sid.rmdup.read2.fq
+		$PRG/ktrim -c -k $seqKit -t $kthread -o $sid -1 $R1fq -2 $R2fq -c | $PRG/krmdup -i /dev/stdin -o $sid.rmdup
+		ln -sf $sid.rmdup.read1.fq $sid.cut.read1.fq
+		ln -sf $sid.rmdup.read2.fq $sid.cut.read2.fq
 	fi
 
 	if [ $? != 0 ]
@@ -363,103 +379,93 @@ then
 	fi
 else	## biological repolicates; including multi-index during library preparation
 	[ $quietmode == "yes" ] || echo "Read preprocessing (as biological replicates) ..."
-	rm -f $sid.rmdup.read1.fq $sid.rmdup.read2.fq
 
 	if [ $DoSTITCH == "yes" ]
 	then
 		for i in ${!R1s_arr[@]}
 		do
-			$PRG/ktrim.mod -k $seqKit -t $kthread -o $sid -1 ${R1s_arr[$i]} -2 ${R2s_arr[$i]} | \
-				$PRG/krmdup.pipe -i /dev/stdin -o $sid.rmdup
+			$PRG/ktrim -c -k $seqKit -t $kthread -o $sid.$i -1 ${R1s_arr[$i]} -2 ${R2s_arr[$i]} -c | \
+			$PRG/krmdup.pipe -i /dev/stdin -o $sid.rmdup
 			if [ $? != 0 ]
 			then
 				echo "ERROR: preprcessing failed! Check your fastq files!" >/dev/stderr
 				exit 31
 			fi
-		done | $PRG/flash --interleaved-input -m 10 -M 150 -t $thread -o $sid.flash - >$sid.flash.log
-		$PRG/cut.fq.tail $sid.flash.notCombined_1.fastq $sid.flash.notCombined_2.fastq $sid.cut &
+		done | $PRG/flash -q --interleaved-input -m 10 -M 150 -t $thread -o $sid.flash -To -c - | \
+		perl $PRG/deal.flash.pl - $sid
+		cat $sid.*.trim.log >$sid.trim.log
 	else
+		rm -f $sid.rmdup.read1.fq $sid.rmdup.read2.fq
 		for i in ${!R1s_arr[@]}
 		do
-			$PRG/ktrim.mod -k $seqKit -t $kthread -o $sid -1 ${R1s_arr[$i]} -2 ${R2s_arr[$i]} | \
-				$PRG/krmdup.append -i /dev/stdin -o $sid.rmdup
+			$PRG/ktrim -c -k $seqKit -t $kthread -o $sid.$i -1 ${R1s_arr[$i]} -2 ${R2s_arr[$i]} -c | \
+			$PRG/krmdup -i /dev/stdin -o $sid.rmdup
 			if [ $? != 0 ]
 			then
 				echo "ERROR: preprcessing failed! Check your fastq files!" >/dev/stderr
 				exit 31
 			fi
 		done
+		cat $sid.*.trim.log >$sid.trim.log
+		ln -sf $sid.rmdup.read1.fq $sid.cut.read1.fq
+		ln -sf $sid.rmdup.read2.fq $sid.cut.read2.fq
 	fi
-fi
-
-## check Ktrim combo
-if [ ! -s $sid.trim.log ]
-then
-	echo "ERROR: Preprocessing failed! Please check your fq.list file!" >/dev/stderr
-	exit 1
 fi
 
 ## alignment
+## thread for pipes
+vthread=4
+if [ $thread -ge 8 ]
+then
+	sthread=8
+else
+	sthread=4
+fi
+
 cp $ANNO/4DN.DCIC.header $sid.final.pairs
 if [ $DoSTITCH == "yes" ]
 then
+	[ $quietmode == "yes" ] || echo "Map stitched reads using $aligner_flash and generate pairs ..."
 	## alignment on flash-combined reads
 	if [ $aligner_flash == "STAR" ]
 	then
-		[ $quietmode == "yes" ] || echo "Map stitched reads using STAR ..."
 		mkdir -p $sid.STAR/
-		$PRG/STAR --genomeDir $sindex \
-			--runThreadN $thread \
-			--readFilesIn $sid.flash.extendedFrags.fastq \
-			--outFileNamePrefix $sid.STAR/flash. \
-			--outSAMtype BAM Unsorted \
-			--outSAMunmapped None --outSAMattributes Standard \
-			$STAR_splicing_param --scoreGapNoncan 4 \
-			--chimOutType WithinBAM --chimSegmentMin $minChim >$sid.STAR/flash.run.log
+		$PRG/STAR $STARparam \
+			--readFilesIn $sid.ext.fq \
+			--outFileNamePrefix $sid.STAR/flash. >$sid.STAR/flash.run.log
 
-		[ $quietmode == "yes" ] || echo "Generate pairs ..."
-		$PRG/samtools view -@ $left_thread $sid.STAR/flash.Aligned.out.bam | $PRG/sam2pairs /dev/stdin flash $sid $thread | \
-			LANG=C sort -k2,2d -k4,4d -k3,3n -k5,5n --parallel=$thread -S 50% >$sid.flash.pairs
+		$PRG/samtools view -@ $vthread $sid.STAR/flash.Aligned.out.bam | \
+		$PRG/sam2pairs /dev/stdin flash $sid $sthread $completeMappingRatio $minMapQ $writeBam | \
+		LANG=C sort -k2,2d -k4,4d -k3,3n -k5,5n --parallel=$thread -S 50% >$sid.flash.pairs
 	else	## BWA
-		[ $quietmode == "yes" ] || echo "Map stitched reads using BWA and generate pairs ..."
-		$PRG/bwa mem -5 -T 10 -v 2 -t $thread $bindex $sid.flash.extendedFrags.fastq 2>$sid.bwa.stitched.log | \
-			$PRG/sam2pairs /dev/stdin flash $sid $left_thread | \
-			LANG=C sort -k2,2d -k4,4d -k3,3n -k5,5n --parallel=$thread -S 50% >$sid.flash.pairs
+		$PRG/bwa mem -5 -T 10 -v 2 -t $thread $bindex $sid.ext.fq 2>$sid.bwa.ext.log | \
+		$PRG/sam2pairs /dev/stdin flash $sid $sthread $completeMappingRatio $minMapQ $writeBam | \
+		LANG=C sort -k2,2d -k4,4d -k3,3n -k5,5n --parallel=$thread -S 50% >$sid.flash.pairs
 	fi
+
 	uncfile=$sid.unc.pairs
 	rm -f $sid.unc.pairs
-	wait
 else
-	mv $sid.rmdup.read1.fq $sid.cut.read1.fq
-	mv $sid.rmdup.read2.fq $sid.cut.read2.fq
 	uncfile=$sid.final.pairs
 fi
 
 ## alignment on uncombined reads
-## NOTE: sort supports parallel from v8.11
+[ $quietmode == "yes" ] || echo "Map un-stitched reads using $aligner_unc and generate pairs ..."
 if [ $aligner_unc == "STAR" ]
 then
-	[ $quietmode == "yes" ] || echo "Map un-stitched reads using STAR ..."
 	mkdir -p $sid.STAR/
-	$PRG/STAR --genomeDir $sindex \
-		--runThreadN $thread \
+	$PRG/STAR $STARparam \
 		--readFilesIn $sid.cut.read1.fq $sid.cut.read2.fq \
-		--outFileNamePrefix $sid.STAR/unc. \
-		--outSAMtype BAM Unsorted \
-		--outSAMunmapped None --outSAMattributes Standard \
-		$STAR_splicing_param --scoreGapNoncan 4 \
-		--chimOutType WithinBAM --chimSegmentMin $minChim >$sid.STAR/unc.run.log
+		--outFileNamePrefix $sid.STAR/unc. >$sid.STAR/unc.run.log
 
-	[ $quietmode == "yes" ] || echo "Generate pairs ..."
-	$PRG/samtools view -@ $left_thread $sid.STAR/unc.Aligned.out.bam | $PRG/sam2pairs /dev/stdin unc $sid $thread | \
-		LANG=C sort -k2,2d -k4,4d -k3,3n -k5,5n --parallel=$thread -S 50% >>$uncfile
+	$PRG/samtools view -@ $vthread $sid.STAR/unc.Aligned.out.bam | \
+	$PRG/sam2pairs /dev/stdin unc $sid $sthread $completeMappingRatio $minMapQ $writeBam | \
+	LANG=C sort -k2,2d -k4,4d -k3,3n -k5,5n --parallel=$thread -S 50% >>$uncfile
 else
-	[ $quietmode == "yes" ] || echo "Map un-stitched reads using BWA and generate pairs ..."
-	$PRG/bwa mem -5SP -T 10 -v 2 -t $thread $bindex $sid.cut.read1.fq $sid.cut.read2.fq 2>$sid.bwa.unstitched.log | \
-		$PRG/sam2pairs /dev/stdin unc $sid $left_thread | \
-		LANG=C sort -k2,2d -k4,4d -k3,3n -k5,5n --parallel=$thread -S 50% >>$uncfile
+	$PRG/bwa mem -5SP -T 10 -v 2 -t $thread $bindex $sid.cut.read1.fq $sid.cut.read2.fq 2>$sid.bwa.unc.log | \
+	$PRG/sam2pairs /dev/stdin unc $sid $sthread $completeMappingRatio $minMapQ $writeBam | \
+	LANG=C sort -k2,2d -k4,4d -k3,3n -k5,5n --parallel=$thread -S 50% >>$uncfile
 fi
-## TODO: check whether align the notCombined reads separately better or not
 
 ## NOTE: this header is essential for juicerbox to recognize the format
 ## -k3,3n -k5,5n is essential for pairix and cooler
@@ -477,21 +483,19 @@ perl $PRG/make.stat.pl $sid $DoSTITCH >$sid.final.stat
 if [ $ucscHic == "yes" ]
 then
 	## a relatively old version of juicer tool will be used to be compatible with UCSC
-	JUICER=$PRG/juicer_tools.ucsc.jar
-	java -Xmx4g -jar $PRG/juicer_tools.ucsc.jar pre \
-		-r $resolution $sid.final.pairs $sid.hic $GINFO &
+	java -Xmx4g -jar $PRG/juicer_tools.ucsc.jar pre -r $resolution $sid.final.pairs $sid.hic $GINFO &
 else
 	## newer versions supports "--threads"
 	## but does not speed-up significantly with multi-threads
-	java -Xmx16g -jar $PRG/juicer_tools.jar pre --threads 4 \
-		-r $resolution $sid.final.pairs $sid.hic $GINFO &
+	java -Xmx32g -jar $PRG/juicer_tools.jar pre --threads $sthread -r $resolution $sid.final.pairs $sid.hic $GINFO &
 fi >$sid.juicer.log 2>&1
 
-## convert to cooler format and do normalization, slow
+## convert to cooler format and do normalization
 if [ $cooler == "yes" ]
 then
 	[ $quietmode == "yes" ] || echo "Convert to cool format (please be patient) ..."
 	## this combo is faster than "cooler cload pairs", because the later does not support multi-thread
+	## bgzip is very slow
 	$PRG/bgzip -c $sid.final.pairs >$sid.final.pairs.gz
 	$PRG/pairix $sid.final.pairs.gz
 	minBIN=`echo $resolution | perl -ne '@r=split /,/; @s=sort {$a<=>$b} @r; print $s[0]'`
@@ -502,30 +506,20 @@ then
 fi
 
 ## generate final mapping results
-if [ $thread -ge 8 ]
-then
-	left_thread=4
-else
-	left_thread=2
-fi
-#let sort_thread=$thread-$left_thread
-
-if [ $skipBam == "no" ]
+if [ $writeBam == 1 ]
 then
 	[ $quietmode == "yes" ] || echo "Generate filtered alignment results (please be patient) ..."
 	touch $sid.flash.sam
-	cat $samheader $sid.flash.sam $sid.unc.sam | $PRG/samtools view -@ $left_thread --no-PG -b /dev/stdin | \
-		$PRG/samtools sort -@ $thread --no-PG -o $sid.valid.bam /dev/stdin 2>/dev/null
-	$PRG/samtools index -@ $thread $sid.valid.bam
+	cat $samheader $sid.flash.sam $sid.unc.sam | $PRG/samtools view -@ $vthread --no-PG -b /dev/stdin | \
+	$PRG/samtools sort -@ $thread -m 4G --no-PG --write-index -o $sid.valid.bam /dev/stdin 2>/dev/null
+#	$PRG/samtools index -@ $thread $sid.valid.bam
 fi
-
 wait
 
 ## clean up
 [ $quietmode == "yes" ] || echo "Clean up intermediate files ..."
-rm -f $sid*rmdup*fq $sid*cut*fq $sid.flash.*fastq
-rm -f $sid.flash.pairs $sid.unc.pairs $sid.flash.sam $sid.unc.sam
-#rm -rf $sid.STAR/ $sid.*raw.sam
+rm -f $sid.*.fq $sid.*.sam $sid.STAR/*bam
+rm -f $sid.flash.pairs $sid.unc.pairs
 
 datetime=`date`
 [ $quietmode == "yes" ] || echo "########## Microcket finishes on $datetime ##########"

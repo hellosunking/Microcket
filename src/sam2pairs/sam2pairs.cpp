@@ -16,11 +16,16 @@ using namespace std;
  * Author: Kun Sun @ SZBL
 */
 
+extern float min_mapped_ratio;
+extern int min_mapQ;
+extern bool writeSam;
+
 int main( int argc, char *argv[] ) {
 	if( argc < 4 ) {
-		cerr << "\nUsage: " << argv[0] << " <in.sam> <mode=flash|unc> <out.prefix> [thread=4]"
+		cerr << "\nUsage: " << argv[0] << " <in.sam> <mode=flash|unc> <out.prefix> [thread=4] [min_mapped_ratio=0.5] [min.mapQ=10] [sam=1|0]"
 			 << "\n\nTask: extract the pairs from the alignment result."
-			 << "\n3 files will be written: out.mode.pairs out.mode.stat out.mode.sam"
+			 << "\n2 files will be written: out.mode.stat and out.mode.sam."
+			 << "\nThe pairs (without header) will be output to stdout (to pipe with sort utility)."
 			 << "\n\nThis program is part of Microcket, and is NOT supposed to be called manually by the user.\n\n";
 		exit(2);
 	}
@@ -32,7 +37,22 @@ int main( int argc, char *argv[] ) {
 			cerr << "Error: at least 2 threads are required.\n";
 			return 5;
 		}
+		if( argc > 5 ) {
+			min_mapped_ratio = atof( argv[5] );
+			cerr << "INFO: min_mapped_ratio is set to " << min_mapped_ratio << ".\n";
+			if( argc > 6 ) {
+				min_mapQ = atoi( argv[6] );
+				cerr << "INFO: min_mapQ is set to " << min_mapQ << ".\n";
+				if( argc > 7 ) {
+					if( argv[7][0]=='N' || argv[7][0]=='n' || argv[7][0]=='0' ) {
+						writeSam = false;
+						cerr << "WARN: sam output is skipped.\n";
+					}
+				}
+			}
+		}
 	}
+
 //	cerr << "INFO: " << thread << " threads will be used.\n";
 	void (*sam2pair)(vector<string> *, vector<string> *, string &, string &, kstat &);
 
@@ -57,14 +77,17 @@ int main( int argc, char *argv[] ) {
 	base = argv[3];
 	base += '.';
 	base += argv[2];
-	string out = base;
-	out += ".sam";
-	FILE *fsam = fopen( out.c_str(), "wb");
-	if( fsam==NULL ) {
-		cerr << "Error: write output file failed!\n";
-		fin.close();
-		fclose( fsam );
-		return 11;
+	string out;
+	FILE *fsam = NULL;
+	if( writeSam ) {
+		out = base;
+		out += ".sam";
+		fsam = fopen( out.c_str(), "wb");
+		if( fsam == NULL ) {
+			cerr << "Error: write sam file failed!\n";
+			fin.close();
+			return 11;
+		}
 	}
 
 //	cerr << "Prepare stat and memeory\n";
@@ -109,8 +132,9 @@ int main( int argc, char *argv[] ) {
 //	cerr << loaded << " records loaded\n";
 
 	// result containers
-	string *outPair = new string [ BATCH ];
-	string *outSam  = new string [ BATCH ];
+	string *outPair = new string [ thread ];
+	string *outSam = NULL;
+	if( writeSam ) outSam = new string [ thread ];
 
 	// start analysis
 	vector<string> *wkr = prA;
@@ -118,6 +142,7 @@ int main( int argc, char *argv[] ) {
 	bool nextBatch = true;
 	do {
 		if( fin.eof() ) {	//no need to load data, use all threads to do the analysis
+//			cerr << "WORKING LAST BATCH\n";
 			omp_set_num_threads( thread );
 			#pragma omp parallel
 			{
@@ -127,9 +152,12 @@ int main( int argc, char *argv[] ) {
 				(*sam2pair)( wkr+start, wkr+end, outPair[tn], outSam[tn], ks[tn] );
 
 				fwrite( outPair[tn].c_str(), 1, outPair[tn].size(), stdout );
-				fwrite(  outSam[tn].c_str(), 1, outSam[tn].size(),  fsam  );
 				outPair[tn].clear();
-				outSam[tn].clear();
+
+				if( writeSam ) {
+					fwrite( outSam[tn].c_str(), 1, outSam[tn].size(), fsam );
+					outSam[tn].clear();
+				}
 			}
 			nextBatch = false;
 		} else { // split into N threads, 1 for loading data, others for analysis
@@ -145,9 +173,12 @@ int main( int argc, char *argv[] ) {
 					unsigned int end   = loaded * (tn+1) / wkt;
 					(*sam2pair)( wkr+start, wkr+end, outPair[tn], outSam[tn], ks[tn] );
 					fwrite( outPair[tn].c_str(), 1, outPair[tn].size(), stdout );
-					fwrite(  outSam[tn].c_str(), 1, outSam[tn].size(),  fsam  );
 					outPair[tn].clear();
-					outSam[tn].clear();
+
+					if( writeSam ) {
+						fwrite( outSam[tn].c_str(), 1, outSam[tn].size(), fsam );
+						outSam[tn].clear();
+					}
 				}
 			}
 			// update parameters for next loop
@@ -159,12 +190,12 @@ int main( int argc, char *argv[] ) {
 	} while( nextBatch );
 //	cerr << "Done.\n";
 	fin.close();
-	fclose( fsam );
+	if( writeSam ) fclose( fsam );
 
 	out = base;
 	out += "2pairs.log";
-	ofstream fst( out.c_str() );
-	if( fst.fail() ) {
+	ofstream flog( out.c_str() );
+	if( flog.fail() ) {
 		cerr << "Error: write log file failed!\n";
 		return 10;
 	}
@@ -177,7 +208,7 @@ int main( int argc, char *argv[] ) {
 		ks[0].cis1K += ks[i].cis1K;
 		ks[0].cis10K+= ks[i].cis10K;
 	}
-	fst << "lowMap\t" << ks[0].lowMap
+	flog<< "lowMap\t" << ks[0].lowMap
 		<< "\nmanyHits\t" << ks[0].manyHits
 		<< "\nunpaired\t" << ks[0].unpaired
 		<< "\nselfCircle\t" << ks[0].selfCircle
@@ -185,13 +216,13 @@ int main( int argc, char *argv[] ) {
 		<< "\ncis10K\t" << ks[0].cis10K
 		<< "\ncis1K\t" << ks[0].cis1K
 		<< "\ncis0\t" << ks[0].cis0 << '\n';
-	fst.close();
+	flog.close();
 
 	delete [] prA;
 	delete [] prB;
 	delete [] ks;
 	delete [] outPair;
-	delete [] outSam;
+	if( writeSam ) delete [] outSam;
 
 	return 0;
 }

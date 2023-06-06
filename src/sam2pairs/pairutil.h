@@ -47,12 +47,13 @@ typedef struct {
 //parameters
 const int BATCH = 1 << 18;
 const int maxSegNum = 16;
-const int min_mapQ  = 10;
-const float min_mapped_ratio = 0.8;		//the read must be covered at least 80% to consider keep
+static int min_mapQ = 10;				//minimum mapQ; NOTE: it is changed to a parameter in v1.2
+static float min_mapped_ratio = 0.5;	//the read must be covered at least 80% to consider keep; NOTE: it is changed to a parameter in v1.2
+static bool writeSam = true;
 const int min_clip_size = 20;			//minimum bp to be considered as a clip; STAR sometimes give XXXM1S thing
 const int max_unmapped_allowed = 20;	//minimum unmapped bp to discard the read, this is to rescue 100M15S thing
 
-const int maxSelfCircleDist = 10;
+const int maxSelfCircleDist = 100;		//NOTE: changed to 100 in v1.2
 const int maxPairDist = 1000;			//for check_pair
 
 //functions

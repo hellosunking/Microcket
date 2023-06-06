@@ -11,6 +11,7 @@ using namespace std;
 /*
  * Author: Kun Sun @ SZBL
 */
+extern bool writeSam;
 
 void unc2pairs( vector<string> *start, vector<string> *end, string &outPair, string &outSam, kstat &ks ) {
 	stringstream ss;
@@ -347,9 +348,11 @@ void unc2pairs( vector<string> *start, vector<string> *end, string &outPair, str
 		}
 
 		// deal with sam
-		for( int i=0; i!=pvs->size(); ++i ) {
-			outSam += pvs->at(i);
-			outSam += '\n';
+		if( writeSam ) {
+			for( int i=0; i!=pvs->size(); ++i ) {
+				outSam += pvs->at(i);
+				outSam += '\n';
+			}
 		}
 	}
 }

@@ -34,6 +34,8 @@ sh $JUICER_EXE/juicer.sh -t $THREAD -D $JUICER_HOME \
 	-d $PWD
 touch juicer.end
 
+## set "-s none" and do not specify "-y" for Micro-C data
+
 ## generate filtered pairs
 #perl filter.Juicer.pl -p $sid.filtered.pairs aligned/merged_nodups.txt
 

@@ -12,6 +12,8 @@ using namespace std;
  * Author: Kun Sun @ SZBL
 */
 
+extern bool writeSam;
+
 void flash2pairs( vector<string> *start, vector<string> *end, string &outPair, string &outSam, kstat &ks ) {
 	stringstream ss;
 	string rid, chr1, chr2, cigar1, cigar2, mapQ;
@@ -60,7 +62,10 @@ void flash2pairs( vector<string> *start, vector<string> *end, string &outPair, s
 			outPair += chr1;outPair+='\t';outPair += p2s;
 			outPair += "\t+\t-\n";
 
-			outSam += pvs->at(0);outSam += '\n';
+			if( writeSam ) {
+				outSam += pvs->at(0);
+				outSam += '\n';
+			}
 		} else if( pvs->size() == 2 ) {	// two segments, common scenario
 			ss.str( pvs->at(0) );
 			ss.clear();
@@ -138,8 +143,10 @@ void flash2pairs( vector<string> *start, vector<string> *end, string &outPair, s
 				outPair += '\n';
 			}
 
-			outSam += pvs->at(0);outSam += '\n';
-			outSam += pvs->at(1);outSam += '\n';
+			if( writeSam ) {
+				outSam += pvs->at(0);outSam += '\n';
+				outSam += pvs->at(1);outSam += '\n';
+			}
 		} else {
 //			cerr << "E9\t" << rid << " has too many segments.\n";
 			++ ks.manyHits;

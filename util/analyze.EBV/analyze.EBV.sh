@@ -31,3 +31,4 @@ perl $PRG/calc.loop2EBV.pl $sid.EBV.pairs | sort -k1,1 -k2,2n >$sid.hs2EBV.bedgr
 cp $PRG/../../anno/4DN.DCIC.header $sid.chrEBV.intra.pairs 
 cat $sid.EBV.pairs | perl -lane 'print if $F[0]!~/^#/ && $F[1] eq "chrEBV"' >>$sid.chrEBV.intra.pairs
 java -jar $PRG/../../bin/juicer_tools.jar pre --threads 4 -r 1000,500,200 $sid.chrEBV.intra.pairs $sid.EBV.hic $PRG/EBV.info
+

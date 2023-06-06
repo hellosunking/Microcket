@@ -7,7 +7,7 @@ use strict;
 use warnings;
 
 if( $#ARGV < 0 ) {
-	print STDERR "\nUsage: $0 <in.pairs[.gz]> [EBV.bin=200] [hs.bin=1000000] [hotspot.loop.ratio=0.001] >intraEBV.bedgraph 2>interEBV.links\n\n";
+	print STDERR "\nUsage: $0 <in.pairs[.gz]> [EBV.bin=200] [hs.bin=1000000] [hotspot.loop.ratio=0.01] >intraEBV.bedgraph 2>interEBV.links\n\n";
 #	print STDERR "\nThis program is designed to \n\n";
 	exit 2;
 }
@@ -15,7 +15,7 @@ if( $#ARGV < 0 ) {
 my $target = 'chrEBV';
 my $bin = $ARGV[1] || 200;
 my $bin_hg38 = $ARGV[2] || 1000000;
-my $hotspot_loop_ratio = $ARGV[3] || 0.001;
+my $hotspot_loop_ratio = $ARGV[3] || 0.01;
 
 ## param for circos
 my $efactor = 5000;	## enlarge factor for EBV genome for circos plots

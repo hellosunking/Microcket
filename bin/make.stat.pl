@@ -21,7 +21,7 @@ my $concat = $ARGV[1];
 print "#Category\tCount\tFraction(%)\n";
 ## preprocess
 my %trim;
-open IN, "$sid.trim.log" or die( "$!" );
+open IN, "cat $sid.trim.log |" or die( "$!" );	## in case there are many files in biological replicates
 while( <IN> ) {
 	chomp;
 	my @l = split /\t/;	##Total   60802850
@@ -49,23 +49,37 @@ my $prealign;
 if( $concat eq "yes" ) {
 	my ($cat, $unc, $cut) = ( 0, 0, 0 );
 
-	open IN, "$sid.flash.log" or die( "$!" );
-	while( <IN> ) {
-		chomp;
-		if( /\sCombined pairs:\s+(\d+)/ ) {
-			$cat = $1;
-			last;
+	if( -s "$sid.flash.log" ) {	## old version
+		open IN, "$sid.flash.log" or die( "$!" );
+		while( <IN> ) {
+			chomp;
+			if( /\sCombined pairs:\s+(\d+)/ ) {
+				$cat = $1;
+				last;
+			}
 		}
-	}
-	close IN;
+		close IN;
 
-	open IN, "$sid.cut.log" or die( "$!" );
-	while( <IN> ) {
-		chomp;
-		if( /Total\s+(\d+)/ ) {$unc = $1;}
-		if( /Pass\s+(\d+)/  ) {$cut = $1;}
+		if( -s "$sid.cut.log" ) {
+			open IN, "$sid.cut.log" or die( "$!" );
+			while( <IN> ) {
+				chomp;
+				if( /Total\s+(\d+)/ ) {$unc = $1;}
+				if( /Pass\s+(\d+)/  ) {$cut = $1;}
+			}
+			close IN;
+		} else {
+			$unc = $rmdup{"Uniq"} - $cat;
+			$cut = $unc;
+		}
+	} else {	## new version
+		open IN, "$sid.stitch.stat" or die( "$!" );
+		my $line = <IN>;chomp($line);my @l = split /\t/, $line;
+		$cat = $l[1];
+		$unc = $l[3];
+		$cut = $l[5];
+		close IN;
 	}
-	close IN;
 
 	printf "Stitched\t%s\t%.1f\nUnstitched\t%s\t%.1f\n  Discarded(too-short)\t%s\t%.1f\n",
 			d($cat), $cat/$rmdup{"Uniq"}*100,

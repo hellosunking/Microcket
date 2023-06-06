@@ -14,6 +14,7 @@ Files that were used to count running time are indicated in these scripts.
 ### IMPORTANT NOTE: the users need to manually amend the paths to the software, genome indices, etc., to run these scripts.
 
 ## The following scripts are used to extract the statistics
+- make.microcket.stat.pl
 - make.juicer.stat.pl
 - make.HiC-Pro.stat.pl
 - make.HiCUP.stat.pl
@@ -24,14 +25,18 @@ Files that were used to count running time are indicated in these scripts.
 - check.consistency.pl (Please note that this program requires LOTS of memory)
 
 ## The following scripts are used to call loops and draw venn-plots on IMR90 cell line Hi-C data
-- call.loop.sh
-- plot.loop.overlap.R
+- loop/call.loop.sh
+- loop/plot.loop.overlap.R
+
+## The following scripts are used to perform *in silico* simulation using [sim3C](https://github.com/cerebis/sim3C "sim3C")
+- simulation/generate.reads.sh
+- simulation/split.sim3C.pl
+- simulation/check.accuracy.pl
 
 ## Other scripts and files
-- filter.Juicer.pl: used to filter Juicer's result and generate a "pairs" file
-- example.fq.list: used by Microcket, run.juicer.sh, run.fanc.sh, and run.Distiller.sh
-- example.HiC-Pro.conf: used by run.HiC-Pro.sh
-- example.hicup.conf: used by run.HiCUP.sh
+- filter.Juicer.pl: used to filter Juicer's result and generate a ".pairs" file
+- example.fq.list: used by `Microcket`, `run.juicer.sh`, `run.fanc.sh`, and `run.Distiller.sh`
+- example.HiC-Pro.conf: used by `run.HiC-Pro.sh`
+- example.hicup.conf: used by `run.HiCUP.sh`
 - extract.running.time.pl: calculate the time interval among various files
 - check.mem.sh: check the memory usage of a program periodically
-

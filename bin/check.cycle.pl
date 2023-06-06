@@ -7,7 +7,7 @@ use strict;
 use warnings;
 
 if( $#ARGV < 0 ) {
-	print STDERR "\nUsage: $0 <in.fq[.gz]> [read.num=10000] [fraction=0.25]\n\n";
+	print STDERR "\nUsage: $0 <fq.list> [read.num=10000] [fraction=0.25]\n\n";
 	exit 2;
 }
 
@@ -20,20 +20,47 @@ if( $readNum<=0 || $fraction>1 ) {
 	exit 10;
 }
 
-$ARGV[0] =~ s/,.*$//;
-if( $ARGV[0] =~ /\.gz$/ ) {
-	open IN, "zcat $ARGV[0] |" or die( "$!" );
-} else {
-	open IN, "$ARGV[0]" or die( "$!" );
+my @files;
+my $err = 0;
+open IN, "$ARGV[0]" or die( "$!" );
+while( <IN> ) {
+	next if /^#/;
+	chomp;
+	my @l = split /\t/;	## R1 R2 extra
+	my @R1 = split /,/, $l[0];
+	my @R2 = split /,/, $l[1];
+	if( $#R1 != $#R2 ) {
+		print STDERR "ERROR: file number does not match!\n";
+		$err = 1;
+		last;
+	}
+
+	foreach my $i ( @R1, @R2 ) {
+		if( -s $i ) {	## check whether file exist
+			push @files, $i;
+		} else {
+			print STDERR "ERROR: file $i does not exist!\n";
+			$err = 1;
+			last;
+		}
+	}
 }
+close IN;
+
+exit 1 if $err;
+
+if( $files[0] =~ /\.gz$/ ) {
+	open IN, "zcat $files[0] |" or die( "$!" );
+} else {
+	open IN, "$files[0]" or die( "$!" );
+}
+
 ## skip the heading 1000 reads, which usually have poor quality
 my $curr = 0;
 while( <IN> ) {
-	<IN>;
-	<IN>;
-	<IN>;
+	<IN>;<IN>;<IN>;
 
-	++$curr;
+	++ $curr;
 	last if $curr == 1000;
 }
 
@@ -52,7 +79,7 @@ while( <IN> ) {
 close IN;
 
 if( $curr == 0 ) {	## no valid reads
-	print STDERR "ERROR: NO enough reads!\n";
+	print STDERR "ERROR: NO reads loaded!\n";
 	print 0;
 	exit 1;
 }

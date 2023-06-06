@@ -19,7 +19,7 @@ ENZYME=${3:-HindIII}
 
 THREAD=8
 genome=/mnt/Genomes/hg38/hg38.fa
-bowtie2Index=/mnt/Genomes/bowtie2.index/hg38
+BWAREF=/mnt/software/bwa-0.7.17/index/hg38p13
 
 files=""
 while read R1 R2 extra
@@ -28,7 +28,7 @@ do
 done < $fqlist
 
 touch fanc.$sid.start
-fanc auto --no-hic -g $genome -t $THREAD -i $bowtie2Index -r $ENZYME -n $sid $files fanc.$sid
+fanc auto --no-hic -g $genome -t $THREAD -i $BWAREF -r $ENZYME -n $sid $files fanc.$sid
 touch fanc.$sid.end
 
 ## files to check running time (within the fanc.$sid directory):
