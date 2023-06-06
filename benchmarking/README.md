@@ -35,6 +35,7 @@ Files that were used to count running time are indicated in these scripts.
 
 ## Other scripts and files
 - filter.Juicer.pl: used to filter Juicer's result and generate a ".pairs" file
+- hicup2pairs: convert HiCUP's output (`sam` format) to `pairs` format (uses LOTS of memory)
 - example.fq.list: used by `Microcket`, `run.juicer.sh`, `run.fanc.sh`, and `run.Distiller.sh`
 - example.HiC-Pro.conf: used by `run.HiC-Pro.sh`
 - example.hicup.conf: used by `run.HiCUP.sh`
