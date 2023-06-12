@@ -120,7 +120,7 @@ do
 			;;
 		t)thread="$OPTARG"
 			;;
-		s)enableSplicing="yes"
+		S)enableSplicing="yes"
 			;;
 		b)biorep="yes"
 			;;
@@ -253,9 +253,8 @@ then
 	exit 12
 fi
 
-
-## due to version issue, I have included pre-complied flash, samtools, STAR, bwa in this package
-## check cooler, which is a python package and could NOT be included here
+## I have included pre-complied Ktrim, flash, samtools, STAR, bwa in this package
+## check cooler, which is a python package and could NOT be included
 if [ $cooler == "yes" ]
 then
 	COOLER=`which cooler || echo ""`
@@ -279,6 +278,7 @@ while read fq1 fq2 extra
 do
 	[ ${fq1:0:1} == "#" ] && continue
 
+	## TODO: change to absolute path?
 	if [ -z "$fq2" ]
 	then
 		echo "ERROR: invalid input file! Each lane must contain both read1 and read2!" >/dev/stderr
