@@ -40,10 +40,10 @@ $BIN/bwa index -p $index/BWA/$gid $fasta
 
 ## generate sam header
 echo "======== Generating annotation files ========"
-cp $index/STAR/$gid/chrNameLength.txt $anno/$gid.anno
-echo -e "@HD\tVN:1.0\tSO:coordinate" > $anno/$gid.sam.header
-cat $index/STAR/$gid/chrNameLength.txt | perl -lane 'print "@SQ\tSN:$l[0]\tLN:$l[1]"' >> $anno/$gid.sam.header
-echo -e "@PG\tID:Microcket\tPN:Microcket\tVN:$ver\tDS:$gid" >> $anno/$gid.sam.header
+cp $index/STAR/$gid/chrNameLength.txt $anno/$gid.info
+echo -e "@HD\tVN:1.0\tSO:coordinate" >$anno/$gid.sam.header
+cat $anno/$gid.info | perl -lane 'print "\@SQ\tSN:$F[0]\tLN:$F[1]"' >>$anno/$gid.sam.header
+echo -e "@PG\tID:Microcket\tPN:Microcket\tVN:$ver\tDS:$gid" >>$anno/$gid.sam.header
 
 echo "======== Job done: now you can use '-g $gid' in microcket ========"
 
