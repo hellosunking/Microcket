@@ -157,9 +157,11 @@ then you can prepare a `fq.list.example1` file as follows:
 # column 1 should record the path to read1
 # column 2 should record the path to read2 (paired to read1)
 # absolute paths are recommended for the fastq files
-# you ca use ',' to list more than 1 files if needed
 /path/to/seq1.read1.fq.gz	/path/to/seq1.read2.fq.gz
 /path/to/seq2.read1.fq.gz	/path/to/seq2.read2.fq.gz
+# you can also use ',' to list more than 1 files if needed
+# i.e., the following style is also acceptable:
+#/path/to/seq1.read1.fq.gz,/path/to/seq2.read1.fq.gz	/path/to/seq1.read2.fq.gz,/path/to/seq2.read2.fq.gz
 ```
 
 Suppose your data is for human, and your sample id is `test.sample1`, then you can run `Microcket` using
