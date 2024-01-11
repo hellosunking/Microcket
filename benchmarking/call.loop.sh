@@ -8,8 +8,7 @@ set -o errexit
 #command || { echo "command failed"; exit 1; }
 
 ## this script is used to call loops from hESC Micro-C data: pooled high-depth, Microcket, and Distiller
-
-juicer_tools=/mnt/software/Microcket-1.1/bin/juicer_tools.2.13.07.jar
+juicer_tools=/mnt/software/Microcket-1.3/bin/juicer_tools.2.13.07.jar
 RES=10000
 THREAD=16
 
