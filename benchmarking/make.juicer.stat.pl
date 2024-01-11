@@ -7,7 +7,8 @@ use strict;
 use warnings;
 
 if( $#ARGV < 0 ) {
-	print STDERR "\nUsage: $0 <Juicer.work.dir>\n\n";
+	print STDERR "\nUsage: $0 <Juicer.work.dir>";
+	print STDERR "\nFiles that will be loaded: splits/*.res.txt, aligned/inter_30.txt, aligned/dups.txt\n\n";
 	exit 2;
 }
 

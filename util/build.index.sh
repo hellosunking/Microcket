@@ -9,41 +9,70 @@ set -o errexit
 
 if [ $# -lt 2 ]
 then
-	echo "Usage: $0 <genome.fa> <genome.id> [thread=all]" > /dev/stderr
+	echo "Usage: $0 <genome.fa> <genome.id> [aligner=all|bwa|star] [thread=all]" > /dev/stderr
 	exit 2
 fi
 
-ver=1.2.0
-
-PRG=`dirname $0`
+ver=1.3.0
+currSHELL=`readlink -f $0`
+PRG=`dirname $currSHELL`
 index=$PRG/../index
 BIN=$PRG/../bin
 anno=$PRG/../anno
 
 fasta=$1
 gid=$2
-thread=${3:-0}
+aligner=${3:-all}
+thread=${4:-0}
 
-if [ $thread == 0 ]
+## to lowercase
+aligner=${aligner,,}
+
+if [ $thread -eq 0 ]
 then
 	thread=`cat /proc/cpuinfo | grep processor | wc -l`
+	echo "INFO: $thread threads will be used."
 fi
 
 ## STAR
-echo "======== Build index for STAR ========"
-mkdir -p $index/STAR/$gid
-$BIN/STAR --runThreadN $thread --runMode genomeGenerate --genomeDir $index/STAR/$gid --genomeFastaFiles $fasta
+doSTAR=no
+doBWA=no
 
-## bwa
-echo "======== Build index for BWA  ========"
-$BIN/bwa index -p $index/BWA/$gid $fasta
+if [ "$aligner" == "all" ]
+then
+	doSTAR=yes
+	doBWA=yes
+elif [ "$aligner" == "star" ]
+then
+	doSTAR=yes
+	echo "INFO: I will build index for STAR only."
+elif [ "$aligner" == "bwa" ]  ## bwa
+then
+	doBWA=yes
+	echo "INFO: I will build index for BWA only."
+else
+	echo "ERROR: unknown aligner! MUST be all, bwa, or star!"
+	exit 1
+fi
+
+if [ "$doBWA" == "yes" ]
+then
+	echo "======== Build index for BWA  ========"
+	mkdir -p $index/$gid/BWA/
+	$BIN/bwa index -p $index/$gid/BWA/$gid $fasta
+fi
+
+if [ "$doSTAR" == "yes" ]
+then
+	echo "======== Build index for STAR ========"
+	mkdir -p $index/$gid/STAR/
+	$BIN/STAR --runThreadN $thread --runMode genomeGenerate \
+		--genomeDir $index/$gid/STAR \
+		--genomeFastaFiles $fasta
+fi
 
 ## generate sam header
 echo "======== Generating annotation files ========"
-cp $index/STAR/$gid/chrNameLength.txt $anno/$gid.info
-echo -e "@HD\tVN:1.0\tSO:coordinate" >$anno/$gid.sam.header
-cat $anno/$gid.info | perl -lane 'print "\@SQ\tSN:$F[0]\tLN:$F[1]"' >>$anno/$gid.sam.header
-echo -e "@PG\tID:Microcket\tPN:Microcket\tVN:$ver\tDS:$gid" >>$anno/$gid.sam.header
-
+perl $PRG/make.sam.header.pl $fasta $gid $anno
 echo "======== Job done: now you can use '-g $gid' in microcket ========"
 

@@ -9,17 +9,27 @@ set -o errexit
 
 if [ $# -lt 2 ]
 then
-	echo "Usage: $0 <in.fq.list> <sid> [Enzyme=HindIII]" > /dev/stderr
+	echo "Usage: $0 <in.fq.list> <sid> [aligner=bwa|bowtie2] [Enzyme=HindIII]" > /dev/stderr
 	exit 2
 fi
 
+export PATH=$PATH:/lustre/home/ksun/lib/Python.3.10.7.build/bin/
+
 fqlist=$1
 sid=$2
-ENZYME=${3:-HindIII}
+aligner=${3:-bwa}
+ENZYME=${4:-HindIII}
 
-THREAD=8
-genome=/mnt/Genomes/hg38/hg38.fa
-BWAREF=/mnt/software/bwa-0.7.17/index/hg38p13
+THREAD=16
+
+fanc=/lustre/home/ksun/lib/Python.3.10.7.build/bin/fanc
+genome=/lustre/home/ksun/Genomes/hg38/hg38.p13.fa
+if [ $aligner == "bowtie2" ]
+then
+	Index=/lustre/home/ksun/Genomes/bowtie2.index/hg38
+else
+	Index=/lustre/home/ksun/software/bwa-0.7.17/index/hg38p13
+fi
 
 files=""
 while read R1 R2 extra
@@ -27,8 +37,12 @@ do
 	files="$files $R1 $R2"
 done < $fqlist
 
+#echo $files
 touch fanc.$sid.start
-fanc auto --no-hic -g $genome -t $THREAD -i $BWAREF -r $ENZYME -n $sid $files fanc.$sid
+
+$fanc auto --no-hic -g $genome -t $THREAD -i $Index \
+	-r $ENZYME -n $sid $files fanc.$sid
+
 touch fanc.$sid.end
 
 ## files to check running time (within the fanc.$sid directory):

@@ -26,8 +26,8 @@ java -jar $juicer_tools hiccups --cpu --threads $THREAD -r $RES -k VC_SQRT \
 for T in highDepth Microcket Distiller
 do
 	cat hiccups.$T/postprocessed_pixels_*.bedpe | \
-	perl -lane 'next if /^#/ || $F[16]>=0.01; $F[0]=~s/^chr//; $F[3]=~s/^chr//; print "$F[0]:$F[1]-$F[3]:$F[4]"' >hiccups.$T/loop
+		perl -lane 'next if /^#/ || $F[16]>=0.01; $F[0]=~s/^chr//; $F[3]=~s/^chr//; print "$F[0]:$F[1]-$F[3]:$F[4]"' >hiccups.$T/loop
 done
 
-R --slave < plot.loop.overlap.R
+R4 --slave < plot.loop.overlap.R 
 

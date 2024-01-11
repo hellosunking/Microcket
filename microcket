@@ -1,12 +1,17 @@
 #!/bin/bash
 #
 # Author: Kun Sun @ SZBL (sunkun@szbl.ac.cn)
-# Date  : 2023.6.6
+# Date  : 2023.12.12
 #
 set -o nounset
 set -o errexit
 
-VERSION="1.2.0, Jun 2023"
+VERSION="1.3.0, Dec 2023"
+
+## changes in v1.3
+## Directory structure of index files
+## Discard the "splice-awareness mode"
+## fix bugs in build.index.sh and run.example.sh
 
 ## changes in v1.2:
 ## Add option "-e" to set completeMappingRatio
@@ -39,7 +44,6 @@ Options:
 
   -a aligner   Set underline aligner. Default: BWA
                    Supports STAR, BWA, STAR-BWA, BWA-STAR
-  -S           Set to enable splicing-aware mode of STAR
   -e VALUE     Set the minimum alignable proportion of a read to consider as complete mapping
                    Default: 0.5. Must be a number between 0 and 1.
   -Q VALUE     Set the minimum mapping quality for a read to be considered. Default: 10
@@ -88,7 +92,6 @@ resolution="2500000,1000000,500000,250000,100000,50000,25000,10000,5000"
 completeMappingRatio=0.5
 minMapQ=10
 biorep="no"
-enableSplicing="no"
 ucscHic="no"
 cooler="no"
 quietmode="no"
@@ -97,7 +100,7 @@ showHelp="no"
 writeBam="yes"
 
 ## parse parameters
-while getopts ":i:o:g:a:k:m:r:e:Q:t:Sbucxqvh" OPTION
+while getopts ":i:o:g:a:k:m:r:e:Q:t:bucxqvh" OPTION
 do
 	case $OPTION in
 		i)infile="$OPTARG"
@@ -119,8 +122,6 @@ do
 		Q)minMapQ="$OPTARG"
 			;;
 		t)thread="$OPTARG"
-			;;
-		S)enableSplicing="yes"
 			;;
 		b)biorep="yes"
 			;;
@@ -172,8 +173,8 @@ then
 fi
 
 ## check aligner and index
-sindex="$MDR/index/STAR/$genome"
-bindex="$MDR/index/BWA/$genome"
+sindex="$MDR/index/$genome/STAR"
+bindex="$MDR/index/$genome/BWA/$genome"
 if [ $aligner == "STAR" ] || [ $aligner == "star" ]
 then
 	if [ ! -s "$sindex/SA" ]
@@ -253,8 +254,8 @@ then
 	exit 12
 fi
 
-## I have included pre-complied Ktrim, flash, samtools, STAR, bwa in this package
-## check cooler, which is a python package and could NOT be included
+## due to version issue, I have included pre-complied flash, samtools, STAR, bwa in this package
+## check cooler, which is a python package and could NOT be included here
 if [ $cooler == "yes" ]
 then
 	COOLER=`which cooler || echo ""`
@@ -267,6 +268,7 @@ then
 	fi
 fi
 
+
 ########################## START ANALYSIS ############################################
 ## extract input files
 R1s=""
@@ -278,12 +280,15 @@ while read fq1 fq2 extra
 do
 	[ ${fq1:0:1} == "#" ] && continue
 
-	## TODO: change to absolute path?
 	if [ -z "$fq2" ]
 	then
 		echo "ERROR: invalid input file! Each lane must contain both read1 and read2!" >/dev/stderr
 		exit 21
 	fi
+
+	## change to absolute path
+	fq1=`perl $PRG/path2absolute.pl $fq1 $PWD`
+	fq2=`perl $PRG/path2absolute.pl $fq2 $PWD`
 
 	R1s="$R1s,$fq1"
 	R2s="$R2s,$fq2"
@@ -303,63 +308,92 @@ then
 	biorep="no"
 fi
 
+## prepare output directory if needed
+if [[ "$sid" == *"/"* ]]	## sid contains '/', e.g., output/sample1
+then
+	outDIR=`dirname $sid`
+	if [ -d "$outDIR" ]
+	then
+		echo "INFO: output directory ($outDIR) exists!"
+	else
+		mkdir -p $outDIR
+		if [ $? != 0 ]
+		then
+			echo "ERROR: Could not make output directory ($outDIR)!"
+			exit 1
+		fi
+	fi
+	cd $outDIR
+	sid=`basename $sid`
+	if [ "$sid" == "" ] || [[ $sid =~ / ]]
+	then
+		echo "ERROR: Could not extract sample id! Please check your \"-o\" option!"
+		exit 1
+	fi
+fi
+
 ## parameters for STAR
 minIntron=20
 maxIntron=10000
 minChim=20
-if [ $enableSplicing == "yes" ]
-then
-	STARparam="--genomeDir $sindex --runThreadN $thread --outSAMtype BAM Unsorted --chimOutType WithinBAM --outBAMcompression 0 --outSAMunmapped None --outSAMattributes Standard --alignIntronMin $minIntron --alignIntronMax $maxIntron --scoreGapNoncan 4 --chimScoreJunctionNonGTAG 0 --chimSegmentMin $minChim"
-else
-	STARparam="--genomeDir $sindex --runThreadN $thread --outSAMtype BAM Unsorted --chimOutType WithinBAM --outBAMcompression 0 --outSAMunmapped None --outSAMattributes Standard --alignIntronMax 1 --scoreGapNoncan 4 --chimScoreJunctionNonGTAG 0 --chimSegmentMin $minChim"
-fi
+STARparam="--genomeDir $sindex --runThreadN $thread --outSAMtype BAM Unsorted --chimOutType WithinBAM --outBAMcompression 0 --outSAMunmapped None --outSAMattributes Standard --alignIntronMax 1 --scoreGapNoncan 4 --chimScoreJunctionNonGTAG 0 --chimSegmentMin $minChim"
 
 ## start analysis
 datetime=`date`
 [ $quietmode == "yes" ] || echo "########## Microcket starts on $datetime ##########"
 
-[ $quietmode == "yes" ] || echo "Check stitch strategy ..."
+[ $quietmode == "yes" ] || echo "Checking read stitch strategy ..."
 ##minConcatCycle=99
-minConcatCycle=150
+minConcatCycle=120
 ## in auto mode: check read cycle, if too short, i.e., < 100, then do not do flash combine
 ## for HiC, most protocols generate ~400 bp fragments therefore PE150 could not read through
-## TODO: add file.existence check in check.cycle.pl
+kthread=4
+[ $thread -ge 8 ] && kthread=6
 if [ $catmod == "auto" ]
 then
-	seqCycle=`perl $PRG/check.cycle.pl $infile`
-	if [ $? != 0 ]	## error occurs
-	then
-		exit $?
-	fi
+	## use the heading 100K reads to evalute the fraction of stitchable reads, do stitch if >10%
+	FQ1=`echo ${R1s_arr[0]} | perl -ne 's/,.*//; print'`
+	FQ2=`echo ${R2s_arr[0]} | perl -ne 's/,.*//; print'`
 
-	if [ $seqCycle -lt $minConcatCycle ]
+	less $FQ1 | head -n 500000 | tail -n 400000 >$sid.testStitch.R1.fq &
+	less $FQ2 | head -n 500000 | tail -n 400000 >$sid.testStitch.R2.fq &
+	wait
+	$PRG/ktrim -k $seqKit -t $kthread -o $sid.testStitch -1 $sid.testStitch.R1.fq -2 $sid.testStitch.R2.fq -c | \
+	$PRG/flash --interleaved-input -m 10 -M 150 -t $thread -o $sid.testStitch.flash - >$sid.testStitch.log
+	DoSTITCH=`cat $sid.testStitch.log | perl -ne 'if(/Percent combined: (\S+)%/){if($1 >= 10){print "yes"}else{print "no"}}'`
+	if [ "$DoSTITCH" == "" ]
 	then
-		[ $quietmode == "yes" ] || echo "INFO: input reads are too short, read stitch will be skipped."
+		echo "WARNING: Error occurs during determination of the stitch mode!"
 		DoSTITCH="no"
-	else
-		[ $quietmode == "yes" ] || echo "INFO: input reads are long enough for stitching."
-		DoSTITCH="yes"
 	fi
+	if [ $quietmode != "yes" ]
+	then
+		if [ "$DoSTITCH" == "yes" ]
+		then
+			echo "INFO: read stitch is enabled."
+		else
+			echo "INFO: read stitch is skipped."
+		fi
+	fi
+	rm -f $sid.testStitch.*
 elif [ $catmod == "no" ]
 then
 	DoSTITCH="no"
-	[ $quietmode == "yes" ] || echo "INFO: read stitch will be skipped."
+	[ $quietmode == "yes" ] || echo "INFO: read stitch is omitted."
 else
 	DoSTITCH="yes"
-	[ $quietmode == "yes" ] || echo "INFO: read stitch will be forced."
+	[ $quietmode == "yes" ] || echo "INFO: read stitch is enforced."
 fi
 
 ## read preprocessing
 ## NOTE: Ktrim v1.5.0 or higher is required
-kthread=4
-[ $thread -ge 8 ] && kthread=6
 if [ $biorep == "no" ]
 then
 	[ $quietmode == "yes" ] || echo "Read preprocessing ..."
 	## the modified combo is 3x faster than the normal ktrim+krmdup
 	if [ $DoSTITCH == "yes" ] 
 	then
-		$PRG/ktrim -c -k $seqKit -t $kthread -o $sid -1 $R1fq -2 $R2fq -c | \
+		$PRG/ktrim -k $seqKit -t $kthread -o $sid -1 $R1fq -2 $R2fq -c | \
 		$PRG/krmdup.pipe -i /dev/stdin -o $sid.rmdup | \
 		$PRG/flash -q --interleaved-input -m 10 -M 150 -t $thread -o $sid.flash -To -c - | \
 		perl $PRG/deal.flash.pl - $sid
@@ -367,7 +401,7 @@ then
 		## This is because flash will not combine those with < 10 bp overlap
 	else
 		rm -f $sid.rmdup.read1.fq $sid.rmdup.read2.fq
-		$PRG/ktrim -c -k $seqKit -t $kthread -o $sid -1 $R1fq -2 $R2fq -c | $PRG/krmdup -i /dev/stdin -o $sid.rmdup
+		$PRG/ktrim -k $seqKit -t $kthread -o $sid -1 $R1fq -2 $R2fq -c | $PRG/krmdup -i /dev/stdin -o $sid.rmdup
 		ln -sf $sid.rmdup.read1.fq $sid.cut.read1.fq
 		ln -sf $sid.rmdup.read2.fq $sid.cut.read2.fq
 	fi
@@ -384,7 +418,7 @@ else	## biological repolicates; including multi-index during library preparation
 	then
 		for i in ${!R1s_arr[@]}
 		do
-			$PRG/ktrim -c -k $seqKit -t $kthread -o $sid.$i -1 ${R1s_arr[$i]} -2 ${R2s_arr[$i]} -c | \
+			$PRG/ktrim -k $seqKit -t $kthread -o $sid.$i -1 ${R1s_arr[$i]} -2 ${R2s_arr[$i]} -c | \
 			$PRG/krmdup.pipe -i /dev/stdin -o $sid.rmdup
 			if [ $? != 0 ]
 			then
@@ -398,7 +432,7 @@ else	## biological repolicates; including multi-index during library preparation
 		rm -f $sid.rmdup.read1.fq $sid.rmdup.read2.fq
 		for i in ${!R1s_arr[@]}
 		do
-			$PRG/ktrim -c -k $seqKit -t $kthread -o $sid.$i -1 ${R1s_arr[$i]} -2 ${R2s_arr[$i]} -c | \
+			$PRG/ktrim -k $seqKit -t $kthread -o $sid.$i -1 ${R1s_arr[$i]} -2 ${R2s_arr[$i]} -c | \
 			$PRG/krmdup -i /dev/stdin -o $sid.rmdup
 			if [ $? != 0 ]
 			then
@@ -425,20 +459,18 @@ fi
 cp $ANNO/4DN.DCIC.header $sid.final.pairs
 if [ $DoSTITCH == "yes" ]
 then
-	[ $quietmode == "yes" ] || echo "Map stitched reads using $aligner_flash and generate pairs ..."
+	[ $quietmode == "yes" ] || echo "Mapping stitched reads using $aligner_flash and generate pairs ..."
 	## alignment on flash-combined reads
 	if [ $aligner_flash == "STAR" ]
 	then
 		mkdir -p $sid.STAR/
-		$PRG/STAR $STARparam \
-			--readFilesIn $sid.ext.fq \
-			--outFileNamePrefix $sid.STAR/flash. >$sid.STAR/flash.run.log
+		$PRG/STAR $STARparam --readFilesIn $sid.ext.fq --outFileNamePrefix $sid.STAR/flash. >$sid.STAR/flash.run.log
 
 		$PRG/samtools view -@ $vthread $sid.STAR/flash.Aligned.out.bam | \
 		$PRG/sam2pairs /dev/stdin flash $sid $sthread $completeMappingRatio $minMapQ $writeBam | \
 		LANG=C sort -k2,2d -k4,4d -k3,3n -k5,5n --parallel=$thread -S 50% >$sid.flash.pairs
 	else	## BWA
-		$PRG/bwa mem -5 -T 10 -v 2 -t $thread $bindex $sid.ext.fq 2>$sid.bwa.ext.log | \
+		$PRG/bwa mem -v 1 -5 -T 10 -t $thread $bindex $sid.ext.fq 2>$sid.bwa.ext.log | \
 		$PRG/sam2pairs /dev/stdin flash $sid $sthread $completeMappingRatio $minMapQ $writeBam | \
 		LANG=C sort -k2,2d -k4,4d -k3,3n -k5,5n --parallel=$thread -S 50% >$sid.flash.pairs
 	fi
@@ -450,19 +482,17 @@ else
 fi
 
 ## alignment on uncombined reads
-[ $quietmode == "yes" ] || echo "Map un-stitched reads using $aligner_unc and generate pairs ..."
+[ $quietmode == "yes" ] || echo "Mapping un-stitched reads using $aligner_unc and generate pairs ..."
 if [ $aligner_unc == "STAR" ]
 then
 	mkdir -p $sid.STAR/
-	$PRG/STAR $STARparam \
-		--readFilesIn $sid.cut.read1.fq $sid.cut.read2.fq \
-		--outFileNamePrefix $sid.STAR/unc. >$sid.STAR/unc.run.log
+	$PRG/STAR $STARparam --readFilesIn $sid.cut.read1.fq $sid.cut.read2.fq --outFileNamePrefix $sid.STAR/unc. >$sid.STAR/unc.run.log
 
 	$PRG/samtools view -@ $vthread $sid.STAR/unc.Aligned.out.bam | \
 	$PRG/sam2pairs /dev/stdin unc $sid $sthread $completeMappingRatio $minMapQ $writeBam | \
 	LANG=C sort -k2,2d -k4,4d -k3,3n -k5,5n --parallel=$thread -S 50% >>$uncfile
 else
-	$PRG/bwa mem -5SP -T 10 -v 2 -t $thread $bindex $sid.cut.read1.fq $sid.cut.read2.fq 2>$sid.bwa.unc.log | \
+	$PRG/bwa mem -v 1 -5 -S -P -T 10 -t $thread $bindex $sid.cut.read1.fq $sid.cut.read2.fq 2>$sid.bwa.unc.log | \
 	$PRG/sam2pairs /dev/stdin unc $sid $sthread $completeMappingRatio $minMapQ $writeBam | \
 	LANG=C sort -k2,2d -k4,4d -k3,3n -k5,5n --parallel=$thread -S 50% >>$uncfile
 fi
@@ -471,15 +501,15 @@ fi
 ## -k3,3n -k5,5n is essential for pairix and cooler
 if [ -s $sid.flash.pairs ]	## Stitch occurs, there should be 2 sorted pairs files, merge them
 then
-	[ $quietmode == "yes" ] || echo "Pool pairs ..."
+	[ $quietmode == "yes" ] || echo "Pooling pairs ..."
 	LANG=C sort -k2,2d -k4,4d -k3,3n -k5,5n --parallel=$thread -S 50% -m $sid.flash.pairs $sid.unc.pairs >>$sid.final.pairs
 fi
 
-[ $quietmode == "yes" ] || echo "Generate analysis statistics ..."
+[ $quietmode == "yes" ] || echo "Generating analysis statistics ..."
 perl $PRG/make.stat.pl $sid $DoSTITCH >$sid.final.stat
 
 ## convert to hic format
-[ $quietmode == "yes" ] || echo "Convert to hic format (please be patient) ..."
+[ $quietmode == "yes" ] || echo "Converting to hic format (please be patient) ..."
 if [ $ucscHic == "yes" ]
 then
 	## a relatively old version of juicer tool will be used to be compatible with UCSC
@@ -490,36 +520,34 @@ else
 	java -Xmx32g -jar $PRG/juicer_tools.jar pre --threads $sthread -r $resolution $sid.final.pairs $sid.hic $GINFO &
 fi >$sid.juicer.log 2>&1
 
+## generate final mapping results
+if [ $writeBam == "yes" ]
+then
+	[ $quietmode == "yes" ] || echo "Generating filtered alignment results (please be patient) ..."
+	touch $sid.flash.sam
+	cat $samheader $sid.flash.sam $sid.unc.sam | $PRG/samtools view -@ $vthread --no-PG -b /dev/stdin | \
+	$PRG/samtools sort -@ $thread -m 4G --no-PG -o $sid.valid.bam /dev/stdin 2>/dev/null
+	$PRG/samtools index -@ $thread $sid.valid.bam
+fi
+wait
+
 ## convert to cooler format and do normalization
 if [ $cooler == "yes" ]
 then
-	[ $quietmode == "yes" ] || echo "Convert to cool format (please be patient) ..."
+	[ $quietmode == "yes" ] || echo "Converting to cool format (please be patient) ..."
 	## this combo is faster than "cooler cload pairs", because the later does not support multi-thread
-	## bgzip is very slow
-	$PRG/bgzip -c $sid.final.pairs >$sid.final.pairs.gz
+	$PRG/bgzip -@ $thread -c $sid.final.pairs >$sid.final.pairs.gz
 	$PRG/pairix $sid.final.pairs.gz
 	minBIN=`echo $resolution | perl -ne '@r=split /,/; @s=sort {$a<=>$b} @r; print $s[0]'`
 	cooler cload pairix -p $thread $GINFO:$minBIN $sid.final.pairs.gz $sid.$minBIN.cool >$sid.cooler.log 2>&1
 #	cooler zoomify --balance -p $thread $sid.$minBIN.cool >>$sid.cooler.log 2>&1
 	## the final output is $sid.1kb.cool
-	wait
 fi
-
-## generate final mapping results
-if [ $writeBam == "yes" ]
-then
-	[ $quietmode == "yes" ] || echo "Generate filtered alignment results (please be patient) ..."
-	touch $sid.flash.sam
-	cat $samheader $sid.flash.sam $sid.unc.sam | $PRG/samtools view -@ $vthread --no-PG -b /dev/stdin | \
-	$PRG/samtools sort -@ $thread -m 2G --no-PG -o $sid.valid.bam /dev/stdin 2>/dev/null
-	$PRG/samtools index -@ $thread $sid.valid.bam
-fi
-wait
 
 ## clean up
-[ $quietmode == "yes" ] || echo "Clean up intermediate files ..."
-rm -f $sid.*.fq $sid.*.sam $sid.STAR/*bam
-rm -f $sid.flash.pairs $sid.unc.pairs
+[ $quietmode == "yes" ] || echo "Cleaning up intermediate files ..."
+#rm -f $sid.*.fq $sid.*.sam $sid.STAR/*bam
+#rm -f $sid.flash.pairs $sid.unc.pairs
 
 datetime=`date`
 [ $quietmode == "yes" ] || echo "########## Microcket finishes on $datetime ##########"

@@ -18,7 +18,13 @@ waittime=${2:-10s}
 
 while true
 do
-	pmap -x $PID | tail -n 1
-	sleep $waittime
+	MEM=`pmap -x $PID | tail -n 1`
+	if [ "$MEM" == "" ]
+	then
+		exit	## process does not exist, or error occurs
+	else
+		echo $MEM
+		sleep $waittime
+	fi
 done
 

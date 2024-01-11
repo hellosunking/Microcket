@@ -11,7 +11,8 @@ echo
 echo "This program is designed to run Microcket on a small dataset, for testing purpose only."
 echo
 
-PRG=`dirname $0`
+currSHELL=`readlink -f $0`
+PRG=`dirname $currSHELL`/../
 mkdir -p testing
 
 ## check sequencing data
@@ -40,7 +41,7 @@ fi
 echo -e "$PWD/testing/SRR4094729_1.fastq.gz\t$PWD/testing/SRR4094729_2.fastq.gz" >testing/SRR4094729.fq.list
 
 ## check index
-if [ ! -s "$PRG/index/STAR/hg38/SA" ]
+if [ ! -s "$PRG/index/hg38/BWA/hg38.sa" ]
 then
 	echo "INFO: index for hg38 is missing, I will try to build one." >/dev/stderr
 	if [ ! -s testing/hg38.fa ]
@@ -59,22 +60,22 @@ then
 		fi
 	fi
 
-	sh $PRG/util/build.index.sh testing/hg38.fa hg38
+	sh $PRG/util/build.index.sh testing/hg38.fa hg38 bwa 1
 	if [ $? != 0 ]
 	then
 		echo ERROR: Build index failed!
 		exit 11
-	fi > /dev/stderr
+	fi >/dev/stderr
 fi
 
 ## run Microcket
 echo "Run Microcket on the testing data ..."
-$PRG/microcket -i testing/SRR4094729.fq.list -o testing/Microcket.SRR4094729 -t 8
+$PRG/microcket -t 16 -g hg38 -i testing/SRR4094729.fq.list -o testing/SRR4094729
 if [ $? != 0 ]
 then
 	echo ERROR: Microcket failed!
 	exit 20
 fi >/dev/stderr
 
-echo "Done: The output files are stored in 'testing/Microcket.SRR4094729'."
+echo "Done: The output files are under 'testing/'."
 

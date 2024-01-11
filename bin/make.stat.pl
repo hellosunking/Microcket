@@ -123,11 +123,11 @@ printf "  Unpairable\t%s\t%.1f\n",  d($align{"unpaired"}), $align{"unpaired"}/$a
 printf "  Self-circle\t%s\t%.1f\n", d($align{"selfCircle"}), $align{"selfCircle"}/$align{"all"}*100;
 
 my $valid = $align{"trans"} + $align{"cis10K"} + $align{"cis1K"} + $align{"cis0"};
-printf "Valid-pair\t%s\t%.1f\n", d($valid), $valid/$align{"all"}*100;
-printf "  Cis(<1K)\t%s\t%.1f\n", d($align{"cis0"}), $align{"cis0"}/$valid*100;
-printf "  Cis(1-10K)\t%s\t%.1f\n", d($align{"cis1K"}), $align{"cis1K"}/$valid*100;
-printf "  Cis(>=10K)\t%s\t%.1f\n", d($align{"cis10K"}), $align{"cis10K"}/$valid*100;
-printf "  Trans\t%s\t%.1f\n", d($align{"trans"}), $align{"trans"}/$valid*100;
+printf "Reported\t%s\t%.1f\n", d($valid), $valid/$align{"all"}*100;
+printf "  Cis(<1K)\t%s\t%.1f\n", d($align{"cis0"}), $align{"cis0"}/$align{"all"}*100;
+printf "  Cis(1-10K)\t%s\t%.1f\n", d($align{"cis1K"}), $align{"cis1K"}/$align{"all"}*100;
+printf "  Cis(>=10K)\t%s\t%.1f\n", d($align{"cis10K"}), $align{"cis10K"}/$align{"all"}*100;
+printf "  Trans\t%s\t%.1f\n", d($align{"trans"}), $align{"trans"}/$align{"all"}*100;
 
 ## digitalize a given number
 sub d {

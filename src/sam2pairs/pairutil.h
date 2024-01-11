@@ -47,9 +47,10 @@ typedef struct {
 //parameters
 const int BATCH = 1 << 18;
 const int maxSegNum = 16;
-static int min_mapQ = 10;				//minimum mapQ; NOTE: it is changed to a parameter in v1.2
-static float min_mapped_ratio = 0.5;	//the read must be covered at least 80% to consider keep; NOTE: it is changed to a parameter in v1.2
-static bool writeSam = true;
+int min_mapQ = 10;				//minimum mapQ; NOTE: it is changed to a parameter in v1.2
+// STAR uses a different scoring system, which usually gives 0,1,3,255, therefore mapQ=10/20/30 is the same to STAR
+float min_mapped_ratio = 0.5;	//the read must be covered at least 80% to consider keep; NOTE: it is changed to a parameter in v1.2
+bool writeSam = true;
 const int min_clip_size = 20;			//minimum bp to be considered as a clip; STAR sometimes give XXXM1S thing
 const int max_unmapped_allowed = 20;	//minimum unmapped bp to discard the read, this is to rescue 100M15S thing
 

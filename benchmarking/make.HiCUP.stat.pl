@@ -28,6 +28,12 @@ while( <IN> ) {
 }
 close IN;
 
+$total /= 1e6;
+$lowQual /= 1e6;
+$mapped /= 1e6;
+$filtered /= 1e6;
+$reported /= 1e6;
+
 print   "Total\t$total\n",
 		"Low-quality\t", $lowQual, "\n",
 		"Unmapped\t", $total-$lowQual-$mapped, "\n",

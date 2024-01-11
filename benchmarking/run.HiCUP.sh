@@ -7,29 +7,36 @@ set -o nounset
 set -o errexit
 #command || { echo "command failed"; exit 1; }
 
-if [ $# -lt 2 ]
+if [ $# -lt 1 ]
 then
-	echo "Usage: $0 <in.conf> <out.dir>"
-	echo "The 'out.dir' should be identical to that in the configuration file."
+	echo "Usage: $0 <in.conf>"
 	exit 2
 fi > /dev/stderr
 
 conf=$1
-OUTDIR=$2
 
-currSHELL=`readlink -f $0`
-PRG=`dirname $currSHELL`
-hicup2pairs=$PRG/hicup2pairs
-HICUP=/mnt/software/HiCUP-0.8.3
+HICUP=~/software/HiCUP-0.8.3
+hicup2pairs=/lustre/home/ksun/kqsoft/Microcket/Microcket-1.3/benchmarking/hicup2pairs
 
-mkdir -p $OUTDIR
+## The OUTDIR should be identical to that in the configuration file
+OUTDIR=`cat $conf | perl -ne 'next if /^\s*#/; print $1 if /Outdir:\s*(\S+)/i'`
+if [ "$OUTDIR" == "" ]
+then
+	echo "ERROR: could not infer output directory from configuration file!"
+	exit 1
+else
+	mkdir -p $OUTDIR
+	echo "INFO: use output directory $OUTDIR"
+fi
+
 touch $OUTDIR/HiCUP.start
 $HICUP/hicup --config $conf
 
 cd $OUTDIR
 touch HiCUP.aligned
-## convert to pairs format
-perl $hicup2pairs *sam >HiCUP.pairs
+## there could be more than 1 sam files
+#cat *sam | $HICUP/Conversion/hicup2juicer -
+$hicup2pairs *sam >HiCUP.pairs
 touch HiCUP.end
 
 ## files to check running time:

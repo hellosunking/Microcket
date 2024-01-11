@@ -1,5 +1,5 @@
 # Microcket: an extra-fast and vesatile tool for analysis of 3D genomics data (Hi-C, Micro-C, ChIA-PET, and derivant protocols)
-Version 1.2.0, Jun 2023<br />
+Version 1.3.0, Dec 2023<br />
 Authors: Yu Zhao, Mengqi Yang, Qin Peng, Leina Lu, Xiaowen Lyu, and Kun Sun \(sunkun@szbl.ac.cn\)<br />
 <br />
 Distributed under the
@@ -14,16 +14,23 @@ For detailed information please refer to the license files under `license` direc
 is finished. `Microcket` does not require any specific hardware or OS. The current version has been tested on CentOS v7.5
 with Linux kernel v3.10.0.
 
-`Microcket` depends on the following tools:
+We recommand the users download the release packages:
+```
+wget https://github.com/hellosunking/Microcket/archive/refs/tags/v1.3.tar.gz
+tar zxf Microcket-1.3.tar.gz
+```
+Now you will get a new directory named `Microcket-1.3`. Most of the required files are included, but you need to build
+the genome indices (see the following sections) before you can use `Microckit`.
 
+`Microcket` depends on the following tools:
 - [Ktrim](https://github.com/hellosunking/Ktrim "Ktrim")
 - [FLASH](http://ccb.jhu.edu/software/FLASH/ "FLASH")
-- [STAR](https://github.com/alexdobin/STAR "STAR")
+- [BWA](https://github.com/lh3/bwa "BWA")
 - [Samtools](http://www.htslib.org/ "Samtools")
 - [JuicerTools](https://github.com/aidenlab/JuicerTools "JuicerTools")
 
 The following tools are optional:
-- [BWA](https://github.com/lh3/bwa "BWA")
+- [STAR](https://github.com/alexdobin/STAR "STAR")
 - [Pairix](https://github.com/4dn-dcic/pairix "Pairix")
 - [cooler](https://github.com/open2c/cooler "cooler")
 
@@ -36,27 +43,27 @@ user@linux$ make clean && make
 ```
 
 Note that if you want to generate `.cool` format results, you need to install the
-[cooler](https://github.com/open2c/cooler "cooler") package and make sure that it can be called directly from the command
-line (i.e., `which cooler` command returns its path).
+[cooler](https://github.com/open2c/cooler "cooler") package and make sure that it can be called directly from the
+command line (i.e., `which cooler` command returns its path).
 
-## Pre-requirements
+## Genome indices
 Before run `Microcket`, genome index must be built and several annotation files are also needed.
+(Change to `Microcket-1.3` directory before running the following commands).
 
-To build genome indices, you need the genome sequence in fasta format. For instance, if you want to build indices for
-human genome hg38, you can download it from the UCSC genome browser:
+To build genome indices, you need to prepare the genome sequences in fasta format. For instance, if you want to build
+indices for human genome hg38, you can download it from the UCSC genome browser:
 ```
 wget -O hg38.p13.fa.gz https://hgdownload.cse.ucsc.edu/goldenpath/hg38/bigZips/p13/hg38.p13.fa.gz
 gzip -d hg38.p13.fa.gz
 ```
-To build the index for `STAR` (if you want to use `STAR` for the analysis):
-```
-bin/STAR --runThreadN 16 --runMode genomeGenerate --genomeDir index/STAR/hg38 --genomeFastaFiles hg38.p13.fa
-```
 To build the index for `BWA` (if you want to use `BWA` for the analysis):
 ```
-bin/bwa index -a bwtsw -p index/BWA/hg38 hg38.p13.fa
+bin/bwa index -a bwtsw -p index/hg38/BWA/hg38 hg38.p13.fa
 ```
-On the other hand, if you already had built such indices before, you can link them to `index/`.<br />
+To build the index for `STAR` (if you want to use `STAR` for the analysis):
+```
+bin/STAR --runThreadN 16 --runMode genomeGenerate --genomeDir index/hg38/STAR --genomeFastaFiles hg38.p13.fa
+```
 
 Besides genome indices, you also need to prepare `XXX.info` and `XXX.sam.header` files and put them under the `anno`
 directory (`XXX` is the genome id). `XXX.info` is a 2-column file recording the lengths of each chromosome in the genome,
@@ -69,8 +76,10 @@ in fasta format and run this program to build indices:
 ```
 sh util/build.index.sh <GENOME.FA> <GENOME.ID>
 ```
-The first parameter is the path to the genome sequence file and the second paramter is the identifier of this
-genome that you want to use.
+The first parameter is the path to the genome sequence file and the second paramter is the identifier of this genome that
+you want to use. Note that this script would build indices for both BWA and STAR by default, and you can specify the aligner
+as the 3rd parameter after GENOME.ID is you only want to build the indices for only one of them.
+
 
 ## Run Microcket
 The main program is `microcket` under the same directory as this `README.md` file. You can add its path to
@@ -84,9 +93,9 @@ Call `microcket` without any parameters to see the usage (or use '-h' option):
 ```
 Usage: microcket [options] -i <fq.list> -o <sid>
 
-Authors : Yu Zhao, Mengqi Yang, Qin Peng, Leina Lu, Xiaowen Lyu, and Kun Sun
+Authors : Yu Zhao, Mengqi Yang, Fanglei Gong, Qin Peng, Leina Lu, Xiaowen Lyu, and Kun Sun
 Software: Kun Sun (sunkun@szbl.ac.cn)
-Version : 1.2.0, Jun 2023
+Version : 1.3.0, Dec 2023
 
 Microcket is an extra-fast and flexible toolkit for Hi-C/Micro-C data analysis.
 It has been specifically optimized for long-cycle (100 or longer) Micro-C data.
@@ -107,7 +116,6 @@ Options:
   -g genome    Set genome. Default hg38.
   -a aligner   Set underline aligner. Default: BWA
                    Supports STAR, BWA, STAR-BWA, BWA-STAR
-  -S           Set to enable splicing-aware mode of STAR
   -e VALUE     Set the minimum alignable proportion of a read to consider as complete mapping
                    Default: 0.5. Must be a number between 0 and 1.
   -Q VALUE     Set the minimum mapping quality for a read to be considered. Default: 10
@@ -131,22 +139,27 @@ Microcket is freely available at https://github.com/hellosunking/Microcket
 ```
 
 Note: Microcket supports 4 modes in alignment in '-a' option; "STAR-BWA" means using STAR for the stitched
-reads while BWA for the unstitched ones, and "BWA-STAR" means the opposite manner.
+reads while BWA for the unstitched ones, and "BWA-STAR" means the opposite manner. In most scenarios, BWA
+is recommended as the aligner; if the users want a quick examination of their data (e.g., from shallow
+sequencing reads to evaluate the quality of the library), STAR might be used.
 
 The input of `Microcket` is a file containing the paths to the paired-end fastq files, where you can add
 as many lines as you like (e.g., 1 line for 1 lane). If your data is generated from biological replicates,
 you can set '-b' option to preserve identical reads between each replicates.
 
 ### Example 1
-Your data is generated using Illumina platform with 2 lanes, then you can prepare a `fq.list.example1`
-file as follows:
+Your data is generated using Illumina platform and you have 2 paired-end files (e.g., sequenced twice),
+then you can prepare a `fq.list.example1` file as follows:
 
 ```
-# lines starting with # are considered as comments
+# lines starting with # are considered as comments and ignored
 # for each line, only the first 2 columns will be used
+# column 1 should record the path to read1
+# column 2 should record the path to read2 (paired to read1)
 # absolute paths are recommended for the fastq files
-/path/to/lane1.read1.fq.gz	/path/to/lane1.read2.fq.gz
-/path/to/lane2.read1.fq.gz	/path/to/lane2.read2.fq.gz
+# you ca use ',' to list more than 1 files if needed
+/path/to/seq1.read1.fq.gz	/path/to/seq1.read2.fq.gz
+/path/to/seq2.read1.fq.gz	/path/to/seq2.read2.fq.gz
 ```
 
 Suppose your data is for human, and your sample id is `test.sample1`, then you can run `Microcket` using
@@ -158,10 +171,10 @@ user@linux$ microcket -i /path/to/fq.list.example1 -o test.sample1
 
 ### Example 2
 You are working on mouse cells and you want to use `mm10` as the reference genome; you have constructed 3
-biological replicates and sequenced them on a BGI sequencer (and replicate 1 has two lanes); you want to use
-`STAR` as the underline aligner; you want to visualize the `hic` result in UCSC genome browser and a `cool`
-format result for other tools; you want to use 16 CPUs in your computing server; you have prepared a
-`fq.list.example2` as follows:
+biological replicates and sequenced them on a BGI sequencer (and replicate 1 has 2 paired-end files);
+you want to use `STAR` as the underline aligner; you want to visualize the `hic` result in UCSC genome browser
+and a `cool` format result for other tools; you want to use 16 CPUs in your computing server; you have prepared
+a `fq.list.example2` as follows:
 
 ```
 # fq.list example 2
@@ -175,23 +188,56 @@ then you can run the analysis using the following command:
 user@linux$ microcket -g mm10 -a star -k bgi -t 16 -buc -i /path/to/fq.list.example2 -o test.sample2
 ```
 
-## Testing dataset
+## Testing dataset and outputs explanation
 As most real HiC/Micro-C datasets are very large, we therefore could not include such data in this source package.
-For testing purpose, we prepared a script `run.testing.dataset.sh` that will download a small Hi-C dataset containing
+For testing purpose, we prepared a script `util/run.testing.dataset.sh` that will download a small Hi-C dataset containing
 ~14 million reads from [European Nucleotide Archive](https://www.ebi.ac.uk/ena/browser/view/SRR4094729 "ENA"), build
 hg38 index (if it doesnot exist), and run Microcket automatically. On this dataset, `Microcket` should output the
 interaction pairs within 5 minutes and finish the whole analysis (with `hic` and `bam` files generated) in ~10 minutes
 using 8 threads on a common computing machine, but the file-downloading time may vary depending on your network speed,
 and the index-building step may take ~1 hour using 16 threads.
 
+The following files would be expected after running the script:
+```
+Microcket.SRR4094729.bwa.unc.log
+Microcket.SRR4094729.final.pairs
+Microcket.SRR4094729.final.stat
+Microcket.SRR4094729.hic
+Microcket.SRR4094729.juicer.log
+Microcket.SRR4094729.rmdup.log
+Microcket.SRR4094729.trim.log
+Microcket.SRR4094729.unc2pairs.log
+Microcket.SRR4094729.valid.bam
+Microcket.SRR4094729.valid.bam.bai
+```
+In these files, `XXX.valid.bam` (XXX is the parameter in "-o" option) contains the final mappable reads in `BAM` format
+(with an index; them bam file will not be generated if '-x' is set), `XXX.final.pairs` records the called `pairs`,
+`XXX.hic` records the matrix in `hic` format (optionally in an additional `cool` format), and `XXX.final.stat` records
+the key statistics of the analysis (e.g., for QC). For this testing dataset, the statistics would look like this:
+```
+#Category       Count   Fraction(%)
+## Preprocessing and alignment
+Total   14,687,360      100.0
+Ktrim   12,191,268      83.0
+Unique  10,752,452      88.2
+Mappable        8,977,487       83.5
+## Interactions
+Uncalled        171,841 1.9
+  Incomplete-mapping    147,614 1.6
+  Too-many-segments     0       0.0
+  Unpairable    23,265  0.3
+  Self-circle   962     0.0
+Reported        8,805,646       98.1
+  Cis(<1K)      4,371,547       49.6
+  Cis(1-10K)    173,137 2.0
+  Cis(>=10K)    2,019,269       22.9
+  Trans 2,241,693       25.5
+```
+
 For comprehensive performance evaluations, we suggest the users use public datasets from literature or consortiums,
 e.g., [Rao et al. Cell 2014](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE63525 "Rao et al. Cell 2014"),
 [4D nucleome project](https://data.4dnucleome.org "4DN project"), and
 [ENCODE project](https://www.encodeproject.org/search/?type=Experiment&assay_title=Hi-C "ENCODE").
-
-## Outputs explanation
-`Microcket` outputs the final mappable reads in `BAM` format (with an index) unless '-x' is set, called interactions
-in `pairs` and `hic` format (optionally in an additional `cool` format), and key statistics of the analysis.
 
 ---
 Please send bug reports to Kun Sun \(sunkun@szbl.ac.cn\).<br />

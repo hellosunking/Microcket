@@ -19,7 +19,7 @@ open EXT, ">$ARGV[1].ext.fq" or die( "$!" );
 open UN1, ">$ARGV[1].cut.read1.fq" or die( "$!" );
 open UN2, ">$ARGV[1].cut.read2.fq" or die( "$!" );
 
-my ($ext, $unc, $pass) = ( 0, 0 );
+my ($ext, $unc, $pass) = ( 0, 0, 0 );
 open IN, "$ARGV[0]" or die( "$!" );
 my @l;
 while( <IN> ) {

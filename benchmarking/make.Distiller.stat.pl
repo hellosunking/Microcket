@@ -30,6 +30,12 @@ while( <IN> ) {
 }
 close IN;
 
+$total /= 1e6;
+$unmapped /= 1e6;
+$filtered /= 1e6;
+$dup /= 1e6;
+$reported /= 1e6;
+
 print   "Total\t$total\n",
 		"Low-quality\t0\n",
 		"Unmapped\t$unmapped\n",
