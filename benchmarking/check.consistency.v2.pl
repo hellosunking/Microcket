@@ -1,1 +1,0 @@
-/lustre/home/ksun/Datasets/HiC.MicroC/Jung.GSE86189.human.HiC.atlas/FINAL.pairs/check.consistency.v2.pl
