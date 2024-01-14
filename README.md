@@ -199,7 +199,7 @@ interaction pairs within 5 minutes and finish the whole analysis (with `hic` and
 using 8 threads on a common computing machine, but the file-downloading time may vary depending on your network speed,
 and the index-building step may take ~1 hour using 16 threads.
 
-The following files would be expected after running the script:
+The following files would be generated under `util/testing` directory after running the script:
 ```
 Microcket.SRR4094729.bwa.unc.log
 Microcket.SRR4094729.final.pairs
@@ -213,7 +213,7 @@ Microcket.SRR4094729.valid.bam
 Microcket.SRR4094729.valid.bam.bai
 ```
 In these files, `XXX.valid.bam` (XXX is the parameter in "-o" option) contains the final mappable reads in `BAM` format
-(with an index; them bam file will not be generated if '-x' is set), `XXX.final.pairs` records the called `pairs`,
+(with an index; the bam file will not be generated if '-x' is set), `XXX.final.pairs` records the called `pairs`,
 `XXX.hic` records the matrix in `hic` format (optionally in an additional `cool` format), and `XXX.final.stat` records
 the key statistics of the analysis (e.g., for QC). For this testing dataset, the statistics would look like this:
 ```
