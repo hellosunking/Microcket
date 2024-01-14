@@ -16,7 +16,7 @@ with Linux kernel v3.10.0.
 
 We recommand the users download the release packages:
 ```
-wget https://github.com/hellosunking/Microcket/archive/refs/tags/v1.3.tar.gz
+wget -O Microcket-1.3.tar.gz https://github.com/hellosunking/Microcket/archive/refs/tags/v1.3.tar.gz
 tar zxf Microcket-1.3.tar.gz
 ```
 Now you will get a new directory named `Microcket-1.3`. Most of the required files are included, but you need to build
