@@ -546,8 +546,7 @@ fi
 
 ## clean up
 [ $quietmode == "yes" ] || echo "Cleaning up intermediate files ..."
-#rm -f $sid.*.fq $sid.*.sam $sid.STAR/*bam
-#rm -f $sid.flash.pairs $sid.unc.pairs
+rm -f $sid.*.fq $sid.*.sam $sid.STAR/*bam $sid.flash.pairs $sid.unc.pairs
 
 datetime=`date`
 [ $quietmode == "yes" ] || echo "########## Microcket finishes on $datetime ##########"

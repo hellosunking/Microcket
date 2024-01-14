@@ -70,12 +70,12 @@ fi
 
 ## run Microcket
 echo "Run Microcket on the testing data ..."
-$PRG/microcket -t 16 -g hg38 -i testing/SRR4094729.fq.list -o testing/SRR4094729
+$PRG/microcket -t 16 -g hg38 -i testing/SRR4094729.fq.list -o testing/Microcket.SRR4094729
 if [ $? != 0 ]
 then
 	echo ERROR: Microcket failed!
 	exit 20
 fi >/dev/stderr
 
-echo "Done: The output files are under 'testing/'."
+echo "Done: The output files are under 'testing/' directory."
 
