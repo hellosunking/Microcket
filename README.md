@@ -1,4 +1,4 @@
-# Microcket: an extra-fast and vesatile tool for analysis of 3D genomics data (Hi-C, Micro-C, ChIA-PET, and derivant protocols)
+# Microcket: an extra-fast and vesatile package for analysis of 3D genomics data (Hi-C, Micro-C and derivant protocols)
 Version 1.3.0, Dec 2023<br />
 Authors: Yu Zhao, Mengqi Yang, Qin Peng, Leina Lu, Xiaowen Lyu, and Kun Sun \(sunkun@szbl.ac.cn\)<br />
 <br />
@@ -20,7 +20,7 @@ wget -O Microcket-1.3.tar.gz https://github.com/hellosunking/Microcket/archive/r
 tar zxf Microcket-1.3.tar.gz
 ```
 Now you will get a new directory named `Microcket-1.3`. Most of the required files are included, but you need to build
-the genome indices (see the following sections) before you can use `Microckit`.
+the genome indices (see the following sections) before you can use `Microcket`.
 
 `Microcket` depends on the following tools:
 - [Ktrim](https://github.com/hellosunking/Ktrim "Ktrim")
