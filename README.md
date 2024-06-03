@@ -249,4 +249,4 @@ When referencing, please cite "Zhao et al. **Accelerating 3D genomics data analy
 ---
 Please send bug reports to Kun Sun \(sunkun@szbl.ac.cn\).<br />
 Microcket is freely available at
-[https://github.com/hellosunking/Microcket/](https://github.com/hellosunking/Microcket/ "Microcket @ Github").
+[https://github.com/hellosunking/Microcket/](https://github.com/hellosunking/Microcket/ "Microcket@Github").
