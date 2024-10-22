@@ -355,8 +355,14 @@ then
 	FQ1=`echo ${R1s_arr[0]} | perl -ne 's/,.*//; print'`
 	FQ2=`echo ${R2s_arr[0]} | perl -ne 's/,.*//; print'`
 
-	less $FQ1 | head -n 500000 | tail -n 400000 >$sid.testStitch.R1.fq &
-	less $FQ2 | head -n 500000 | tail -n 400000 >$sid.testStitch.R2.fq &
+	if [[ $FQ1 =~ \.gz$ ]]
+	then
+		zcat $FQ1 | head -n 500000 | tail -n 400000 >$sid.testStitch.R1.fq &
+		zcat $FQ2 | head -n 500000 | tail -n 400000 >$sid.testStitch.R2.fq &
+	else
+		cat $FQ1 | head -n 500000 | tail -n 400000 >$sid.testStitch.R1.fq &
+		cat $FQ2 | head -n 500000 | tail -n 400000 >$sid.testStitch.R2.fq &
+	fi
 	wait
 	$PRG/ktrim -k $seqKit -t $kthread -o $sid.testStitch -1 $sid.testStitch.R1.fq -2 $sid.testStitch.R2.fq -c | \
 	$PRG/flash --interleaved-input -m 10 -M 150 -t $thread -o $sid.testStitch.flash - >$sid.testStitch.log
