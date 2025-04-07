@@ -1,5 +1,5 @@
-# Microcket: an extra-fast and vesatile package for analysis of 3D genomics data (Hi-C, Micro-C and derivant protocols)
-Version 1.3.0, Dec 2023<br />
+# Microcket: an extra-fast and vesatile tool for analysis of 3D genomics data (Hi-C, Micro-C, ChIA-PET, and derivant protocols)
+Version 1.3.1, Dec 2024<br />
 Authors: Yu Zhao, Mengqi Yang, Qin Peng, Leina Lu, Xiaowen Lyu, and Kun Sun \(sunkun@szbl.ac.cn\)<br />
 <br />
 Distributed under the
@@ -16,11 +16,11 @@ with Linux kernel v3.10.0.
 
 We recommand the users download the release packages:
 ```
-wget -O Microcket-1.3.tar.gz https://github.com/hellosunking/Microcket/archive/refs/tags/v1.3.tar.gz
-tar zxf Microcket-1.3.tar.gz
+wget https://github.com/hellosunking/Microcket/archive/refs/tags/v1.3.1.tar.gz
+tar zxf Microcket-1.3.1.tar.gz
 ```
-Now you will get a new directory named `Microcket-1.3`. Most of the required files are included, but you need to build
-the genome indices (see the following sections) before you can use `Microcket`.
+Now you will get a new directory named `Microcket-1.3.1`. Most of the required files are included, but you need to build
+the genome indices (see the following sections) before you can use `Microckit`.
 
 `Microcket` depends on the following tools:
 - [Ktrim](https://github.com/hellosunking/Ktrim "Ktrim")
@@ -80,7 +80,6 @@ The first parameter is the path to the genome sequence file and the second param
 you want to use. Note that this script would build indices for both BWA and STAR by default, and you can specify the aligner
 as the 3rd parameter after GENOME.ID is you only want to build the indices for only one of them.
 
-
 ## Run Microcket
 The main program is `microcket` under the same directory as this `README.md` file. You can add its path to
 your `~/.bashrc` file under the `PATH` variable to call it from anywhere; or you can run the following command
@@ -95,7 +94,7 @@ Usage: microcket [options] -i <fq.list> -o <sid>
 
 Authors : Yu Zhao, Mengqi Yang, Fanglei Gong, Qin Peng, Leina Lu, Xiaowen Lyu, and Kun Sun
 Software: Kun Sun (sunkun@szbl.ac.cn)
-Version : 1.3.0, Dec 2023
+Version : 1.3.1, Dec 2024
 
 Microcket is an extra-fast and flexible toolkit for Hi-C/Micro-C data analysis.
 It has been specifically optimized for long-cycle (100 or longer) Micro-C data.
@@ -157,11 +156,9 @@ then you can prepare a `fq.list.example1` file as follows:
 # column 1 should record the path to read1
 # column 2 should record the path to read2 (paired to read1)
 # absolute paths are recommended for the fastq files
+# you ca use ',' to list more than 1 files if needed
 /path/to/seq1.read1.fq.gz	/path/to/seq1.read2.fq.gz
 /path/to/seq2.read1.fq.gz	/path/to/seq2.read2.fq.gz
-# you can also use ',' to list more than 1 files if needed
-# i.e., the following style is also acceptable:
-#/path/to/seq1.read1.fq.gz,/path/to/seq2.read1.fq.gz	/path/to/seq1.read2.fq.gz,/path/to/seq2.read2.fq.gz
 ```
 
 Suppose your data is for human, and your sample id is `test.sample1`, then you can run `Microcket` using
@@ -199,7 +196,7 @@ interaction pairs within 5 minutes and finish the whole analysis (with `hic` and
 using 8 threads on a common computing machine, but the file-downloading time may vary depending on your network speed,
 and the index-building step may take ~1 hour using 16 threads.
 
-The following files would be generated under `util/testing` directory after running the script:
+The following files would be expected after running the script:
 ```
 Microcket.SRR4094729.bwa.unc.log
 Microcket.SRR4094729.final.pairs
@@ -213,7 +210,7 @@ Microcket.SRR4094729.valid.bam
 Microcket.SRR4094729.valid.bam.bai
 ```
 In these files, `XXX.valid.bam` (XXX is the parameter in "-o" option) contains the final mappable reads in `BAM` format
-(with an index; the bam file will not be generated if '-x' is set), `XXX.final.pairs` records the called `pairs`,
+(with an index; them bam file will not be generated if '-x' is set), `XXX.final.pairs` records the called `pairs`,
 `XXX.hic` records the matrix in `hic` format (optionally in an additional `cool` format), and `XXX.final.stat` records
 the key statistics of the analysis (e.g., for QC). For this testing dataset, the statistics would look like this:
 ```
@@ -241,12 +238,8 @@ e.g., [Rao et al. Cell 2014](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=
 [4D nucleome project](https://data.4dnucleome.org "4DN project"), and
 [ENCODE project](https://www.encodeproject.org/search/?type=Experiment&assay_title=Hi-C "ENCODE").
 
-## Citation
-When referencing, please cite "Zhao et al. **Accelerating 3D genomics data analysis with Microcket.** *Commun Biol.* 2024 Jun 1; 7(1):675."
-[PubMed](https://www.ncbi.nlm.nih.gov/pubmed/38824179 "Microcket@PubMed")
-[Full Text](https://www.nature.com/articles/s42003-024-06382-4 "Full text")
-
 ---
 Please send bug reports to Kun Sun \(sunkun@szbl.ac.cn\).<br />
 Microcket is freely available at
-[https://github.com/hellosunking/Microcket/](https://github.com/hellosunking/Microcket/ "Microcket@Github").
+[https://github.com/hellosunking/Microcket/](https://github.com/hellosunking/Microcket/ "Microcket @ Github").
+

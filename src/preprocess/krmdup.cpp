@@ -80,7 +80,7 @@ void usage( const char * prg ) {
 		 << "\nThe total KEY size in read1 and read2 must >=16 and <=32."
 		 << "\nWhen running this program on the adapter-and-quality trimmed data, please mind the read length,"
 		 << "\nreads that are shorter than Skip1+Key1 or Skip2+Key2 will be discarded."
-		 << "\n\nLog file will be written, while reads will be output to STDOUT in interleaved-fastq format.\n\n";
+		 << "\n\nLog and FASTQ files will be written.\n\n";
 
 	exit(2);
 }

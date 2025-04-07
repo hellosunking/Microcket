@@ -1,18 +1,22 @@
 #!/bin/bash
 #
 # Author: Kun Sun @ SZBL (sunkun@szbl.ac.cn)
-# Date  : 2023.12.12
+# Date  : 2024.12.12
 #
 set -o nounset
 set -o errexit
 
-VERSION="1.3.0, Dec 2023"
+VERSION="1.3.1, Dec 2024"
 
+## changes v1.3.1
+## Optimize the determination of stitching in "auto" mode
+## update Ktrim to v1.6
+##
 ## changes in v1.3
-## Directory structure of index files
+## Optimize directory structure of index files
 ## Discard the "splice-awareness mode"
 ## fix bugs in build.index.sh and run.example.sh
-
+##
 ## changes in v1.2:
 ## Add option "-e" to set completeMappingRatio
 ## Add option "-Q" to set min mapQ
@@ -23,7 +27,7 @@ function usage() {
 echo -e "
 \033[1;34mUsage: microcket [options] -i <fq.list> -o <sid>\033[0m
 
-Authors : Yu Zhao, Mengqi Yang, Qin Peng, Leina Lu, Xiaowen Lyu, Kun Sun
+Authors : Yu Zhao and Kun Sun
 Software: Kun Sun (sunkun@szbl.ac.cn)
 Version : $VERSION
 
@@ -37,7 +41,7 @@ Options:
 
   -g genome    Set genome. Default hg38.
   -b           Set this flag to keep inter-lane duplications (e.g., biological replicates)
-  -k kit       Set sequencing kit for adaptor-trimming. Default: illumina
+  -k kit       Set sequencing kit for adapter-trimming. Default: illumina
                    Supports bgi, illumina, nextera.
   -m mode      Set read stitch mode. Default: auto
                    Supports yes, no, auto
@@ -60,8 +64,8 @@ Options:
                    Default: all threads available (\e[1;34mrequire >=4\e[0m)
 
   -q           Set this flag to run in quiet mode (only report fatal errors)
-  -v           Show software version and quit
-  -h           Show this help information and quit
+  -v           Show software version and quit normally
+  -h           Show this help information and quit normally
 
 \033[1;34mMicrocket is freely available at https://github.com/hellosunking/Microcket\033[0m
 "
@@ -261,10 +265,10 @@ then
 	COOLER=`which cooler || echo ""`
 	if [ -z $COOLER ]
 	then
-		echo "ERROR: Cooler is NOT found but you have set '-c'!" >/dev/stderr
+		echo "ERROR: 'cooler' is NOT found but you have set '-c'!" >/dev/stderr
 		exit 100
 	else
-		[ $quietmode == "yes" ] || echo "INFO: Cooler is found at '$COOLER'."
+		[ $quietmode == "yes" ] || echo "INFO: 'cooler' is found at '$COOLER'."
 	fi
 fi
 
@@ -347,8 +351,8 @@ datetime=`date`
 minConcatCycle=120
 ## in auto mode: check read cycle, if too short, i.e., < 100, then do not do flash combine
 ## for HiC, most protocols generate ~400 bp fragments therefore PE150 could not read through
-kthread=4
-[ $thread -ge 8 ] && kthread=6
+kthread=6
+[ $thread -ge 8 ] && kthread=8
 if [ $catmod == "auto" ]
 then
 	## use the heading 100K reads to evalute the fraction of stitchable reads, do stitch if >10%
@@ -365,7 +369,7 @@ then
 	fi
 	wait
 	$PRG/ktrim -k $seqKit -t $kthread -o $sid.testStitch -1 $sid.testStitch.R1.fq -2 $sid.testStitch.R2.fq -c | \
-	$PRG/flash --interleaved-input -m 10 -M 150 -t $thread -o $sid.testStitch.flash - >$sid.testStitch.log
+	$PRG/flash --interleaved-input -m 10 -M 150 -t $thread -o $sid.testStitch.flash -c - >/dev/null 2>$sid.testStitch.log
 	DoSTITCH=`cat $sid.testStitch.log | perl -ne 'if(/Percent combined: (\S+)%/){if($1 >= 10){print "yes"}else{print "no"}}'`
 	if [ "$DoSTITCH" == "" ]
 	then
@@ -392,7 +396,6 @@ else
 fi
 
 ## read preprocessing
-## NOTE: Ktrim v1.5.0 or higher is required
 if [ $biorep == "no" ]
 then
 	[ $quietmode == "yes" ] || echo "Read preprocessing ..."
