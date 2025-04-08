@@ -6,7 +6,7 @@
 set -o nounset
 set -o errexit
 
-VERSION="1.4, Apr 2025"
+VERSION="v1.4, Apr 2025"
 
 ## changes v1.4
 ## Optimize the determination of stitching in "auto" mode

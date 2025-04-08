@@ -11,7 +11,7 @@ if( $#ARGV < 2 ) {
 	print STDERR "\nUsage: $0 <genome.fa> <id> <anno.dir>\n\n";
 	exit 2;
 }
-my $ver = '1.3.0';
+my $ver = '1.4';
 
 my %genome;
 my $chr = 'NA';

@@ -246,6 +246,12 @@ e.g., [Rao et al. Cell 2014](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=
 [4D nucleome project](https://data.4dnucleome.org "4DN project"), and
 [ENCODE project](https://www.encodeproject.org/search/?type=Experiment&assay_title=Hi-C "ENCODE").
 
+## Citation
+When referencing, please cite "Zhao Y, Yang M, Gong F, Pan Y, Hu M, Peng Q, Lu L, Lyu X, Sun K.
+**Accelerating 3D genomics data analysis with Microcket.** *Commun Biol.* 2024 Jun 1; 7(1):675.
+[PubMed](https://www.ncbi.nlm.nih.gov/pubmed/38824179 "Microcket@PubMed")
+[Full Text](https://www.nature.com/articles/s42003-024-06382-4 "Full text")
+
 ---
 Please send bug reports to Kun Sun \(sunkun@szbl.ac.cn\).<br />
 Microcket is freely available at
