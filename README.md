@@ -56,9 +56,16 @@ indices for human genome hg38, you can download it from the UCSC genome browser:
 wget -O hg38.p13.fa.gz https://hgdownload.cse.ucsc.edu/goldenpath/hg38/bigZips/p13/hg38.p13.fa.gz
 gzip -d hg38.p13.fa.gz
 ```
+Since most reference genomes contain unplaced contigs, e.g., hs8_KZ208915v1_fix, we provide a script to remove such
+contigs if you do not want them during the analysis (optional):
+```
+perl util/clean.genome.pl hg38.p13.fa > hg38.p13.clean.fa
+```
 To build the index for `BWA` (if you want to use `BWA` for the analysis):
 ```
 bin/bwa index -a bwtsw -p index/hg38/BWA/hg38 hg38.p13.fa
+## or
+## bin/bwa index -a bwtsw -p index/hg38/BWA/hg38 hg38.p13.clean.fa
 ```
 To build the index for `STAR` (if you want to use `STAR` for the analysis):
 ```
