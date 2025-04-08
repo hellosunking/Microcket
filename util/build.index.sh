@@ -9,11 +9,12 @@ set -o errexit
 
 if [ $# -lt 2 ]
 then
-	echo "Usage: $0 <genome.fa> <genome.id> [aligner=all|bwa|star] [thread=all]" > /dev/stderr
+	echo "Usage: $0 <genome.fa> <genome.id> [aligner=all|bwa|star] [thread=all]" >/dev/stderr
+	echo "INFO: You may consider removing the unplaced contigs using 'util/clean.genome.pl' script." >/dev/stderr
 	exit 2
 fi
 
-ver=1.3.0
+ver=1.4
 currSHELL=`readlink -f $0`
 PRG=`dirname $currSHELL`
 index=$PRG/../index
@@ -31,7 +32,7 @@ aligner=${aligner,,}
 if [ $thread -eq 0 ]
 then
 	thread=`cat /proc/cpuinfo | grep processor | wc -l`
-	echo "INFO: $thread threads will be used."
+	echo "INFO: $thread threads available."
 fi
 
 ## STAR

@@ -1,5 +1,5 @@
 # Microcket: an extra-fast and vesatile tool for analysis of 3D genomics data (Hi-C, Micro-C, ChIA-PET, and derivant protocols)
-Version 1.3.1, Dec 2024<br />
+Version 1.4, Apr 2025<br />
 Authors: Yu Zhao, Mengqi Yang, Qin Peng, Leina Lu, Xiaowen Lyu, and Kun Sun \(sunkun@szbl.ac.cn\)<br />
 <br />
 Distributed under the
@@ -16,8 +16,8 @@ with Linux kernel v3.10.0.
 
 We recommand the users download the release packages:
 ```
-wget https://github.com/hellosunking/Microcket/archive/refs/tags/v1.3.1.tar.gz
-tar zxf Microcket-1.3.1.tar.gz
+wget https://github.com/hellosunking/Microcket/archive/refs/tags/v1.4.tar.gz
+tar zxf Microcket-1.4.tar.gz
 ```
 Now you will get a new directory named `Microcket-1.3.1`. Most of the required files are included, but you need to build
 the genome indices (see the following sections) before you can use `Microckit`.
@@ -48,7 +48,7 @@ command line (i.e., `which cooler` command returns its path).
 
 ## Genome indices
 Before run `Microcket`, genome index must be built and several annotation files are also needed.
-(Change to `Microcket-1.3` directory before running the following commands).
+(Change to `Microcket-1.4` directory before running the following commands).
 
 To build genome indices, you need to prepare the genome sequences in fasta format. For instance, if you want to build
 indices for human genome hg38, you can download it from the UCSC genome browser:
@@ -94,7 +94,7 @@ Usage: microcket [options] -i <fq.list> -o <sid>
 
 Authors : Yu Zhao, Mengqi Yang, Fanglei Gong, Qin Peng, Leina Lu, Xiaowen Lyu, and Kun Sun
 Software: Kun Sun (sunkun@szbl.ac.cn)
-Version : 1.3.1, Dec 2024
+Version : 1.4, Apr 2025
 
 Microcket is an extra-fast and flexible toolkit for Hi-C/Micro-C data analysis.
 It has been specifically optimized for long-cycle (100 or longer) Micro-C data.
@@ -212,7 +212,8 @@ Microcket.SRR4094729.valid.bam.bai
 In these files, `XXX.valid.bam` (XXX is the parameter in "-o" option) contains the final mappable reads in `BAM` format
 (with an index; them bam file will not be generated if '-x' is set), `XXX.final.pairs` records the called `pairs`,
 `XXX.hic` records the matrix in `hic` format (optionally in an additional `cool` format), and `XXX.final.stat` records
-the key statistics of the analysis (e.g., for QC). For this testing dataset, the statistics would look like this:
+the key statistics of the analysis (e.g., for QC). For this testing dataset, the statistics would look like this
+(note that the numbers may vary when using different versions of Microcket):
 ```
 #Category       Count   Fraction(%)
 ## Preprocessing and alignment

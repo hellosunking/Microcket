@@ -6,10 +6,13 @@
 set -o nounset
 set -o errexit
 
-VERSION="1.3.1, Dec 2024"
+VERSION="1.4, Apr 2025"
 
-## changes v1.3.1
+## changes v1.4
 ## Optimize the determination of stitching in "auto" mode
+## change the distance to call self-circles to 10
+## fix a bug in reporting self-circles 
+## add a script to remove unplaced contigs in reference genome
 ## update Ktrim to v1.6
 ##
 ## changes in v1.3

@@ -54,7 +54,7 @@ bool writeSam = true;
 const int min_clip_size = 20;			//minimum bp to be considered as a clip; STAR sometimes give XXXM1S thing
 const int max_unmapped_allowed = 20;	//minimum unmapped bp to discard the read, this is to rescue 100M15S thing
 
-const int maxSelfCircleDist = 100;		//NOTE: changed to 100 in v1.2
+const int maxSelfCircleDist = 10;		//NOTE: changed to 10 in v1.4; was 100 in v1.3
 const int maxPairDist = 1000;			//for check_pair
 
 //functions

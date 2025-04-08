@@ -47,10 +47,10 @@ void flash2pairs( vector<string> *start, vector<string> *end, string &outPair, s
 			// output the outmost loci
 			pos2 = s1.right[ s1.segCnt-1 ];
 			unsigned int dist = pos2 - pos1;
-			if( dist <= maxSelfCircleDist ) {
-				++ ks.selfCircle;	// self-loop
-				continue;
-			}
+//			if( dist <= maxSelfCircleDist ) {	// this should not be possible?
+//				++ ks.selfCircle;	// self-loop
+//				continue;
+//			}
 			if(dist>=10000) {++ ks.cis10K;} else if (dist>=1000) {++ ks.cis1K;} else {++ ks.cis0;}
 
 			ss.clear();
@@ -111,8 +111,8 @@ void flash2pairs( vector<string> *start, vector<string> *end, string &outPair, s
 			if( (chrcmp<0) || (chrcmp==0 && pos1 < pos2) ) {
 				if( chrcmp == 0 ) {
 					unsigned int dist = pos2 - pos1;
-					if( dist == 0 ) {
-						++ ks.unpaired;	// self-loop
+					if( dist <= maxSelfCircleDist ) {
+						++ ks.selfCircle;	// self-loop
 						continue;
 					}
 					if(dist>=10000) {++ ks.cis10K;} else if (dist>=1000) {++ ks.cis1K;} else {++ ks.cis0;}
