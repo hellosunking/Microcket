@@ -19,7 +19,7 @@ We recommand the users download the release packages:
 wget https://github.com/hellosunking/Microcket/archive/refs/tags/v1.4.tar.gz
 tar zxf Microcket-1.4.tar.gz
 ```
-Now you will get a new directory named `Microcket-1.3.1`. Most of the required files are included, but you need to build
+Now you will get a new directory named `Microcket-1.4`. Most of the required files are included, but you need to build
 the genome indices (see the following sections) before you can use `Microckit`.
 
 `Microcket` depends on the following tools:
@@ -220,7 +220,7 @@ In these files, `XXX.valid.bam` (XXX is the parameter in "-o" option) contains t
 (with an index; them bam file will not be generated if '-x' is set), `XXX.final.pairs` records the called `pairs`,
 `XXX.hic` records the matrix in `hic` format (optionally in an additional `cool` format), and `XXX.final.stat` records
 the key statistics of the analysis (e.g., for QC). For this testing dataset, the statistics would look like this
-(note that the numbers may vary when using different versions of Microcket):
+(note that the numbers may vary with different versions of Microcket or reference genomes):
 ```
 #Category       Count   Fraction(%)
 ## Preprocessing and alignment

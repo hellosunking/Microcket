@@ -350,10 +350,7 @@ datetime=`date`
 [ $quietmode == "yes" ] || echo "########## Microcket starts on $datetime ##########"
 
 [ $quietmode == "yes" ] || echo "Checking read stitch strategy ..."
-##minConcatCycle=99
-minConcatCycle=120
-## in auto mode: check read cycle, if too short, i.e., < 100, then do not do flash combine
-## for HiC, most protocols generate ~400 bp fragments therefore PE150 could not read through
+## auto mode: check whether 10% or more reads could be stitched using the heading 100K reads
 kthread=6
 [ $thread -ge 8 ] && kthread=8
 if [ $catmod == "auto" ]
