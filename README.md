@@ -1,5 +1,5 @@
 # Microcket: an extra-fast and vesatile tool for analysis of 3D genomics data (Hi-C, Micro-C, ChIA-PET, and derivant protocols)
-Version 1.4, Apr 2025<br />
+Version 1.5, Oct 2026<br />
 Authors: Yu Zhao, Mengqi Yang, Qin Peng, Leina Lu, Xiaowen Lyu, and Kun Sun \(sunkun@szbl.ac.cn\)<br />
 <br />
 Distributed under the
@@ -11,15 +11,15 @@ For detailed information please refer to the license files under `license` direc
 
 ## Installation
 `Microcket` is written mainly in `C++` for GNU Linux/Unix platforms. After uncompressing the source package, installation
-is finished. `Microcket` does not require any specific hardware or OS. The current version has been tested on CentOS v7.5
-with Linux kernel v3.10.0.
+is finished. `Microcket` does not require any specific hardware or OS. The current version has been tested on Rocky Linux v9.8
+with Linux kernel v5.14.0.
 
 We recommand the users download the release packages:
 ```
-wget https://github.com/hellosunking/Microcket/archive/refs/tags/v1.4.tar.gz
-tar zxf Microcket-1.4.tar.gz
+wget https://github.com/hellosunking/Microcket/archive/refs/tags/v1.5.tar.gz
+tar zxf Microcket-1.5.tar.gz
 ```
-Now you will get a new directory named `Microcket-1.4`. Most of the required files are included, but you need to build
+Now you will get a new directory named `Microcket-1.5`. Most of the required files are included, but you need to build
 the genome indices (see the following sections) before you can use `Microckit`.
 
 `Microcket` depends on the following tools:
@@ -34,8 +34,8 @@ The following tools are optional:
 - [Pairix](https://github.com/4dn-dcic/pairix "Pairix")
 - [cooler](https://github.com/open2c/cooler "cooler")
 
-Pre-compiled executables for these tools are packaged in `bin/` directory (compiled with `g++ v4.8.5` and linked
-with `libz v1.2.7`. If you could not run them (which is usually caused by low version of `libc++` or `libz` library),
+Pre-compiled executables for these tools are packaged in `bin/` directory (compiled with `g++ v11.5.0` and linked
+with `libz v1.3.2`. If you could not run them (which is usually caused by low version of `libc++` or `libz` library),
 you may re-compile these programs yourself and replace the ones in the `bin` directory (recommended), then re-compile
 the in-house progams for `Microcket` via:
 ```
@@ -48,7 +48,7 @@ command line (i.e., `which cooler` command returns its path).
 
 ## Genome indices
 Before run `Microcket`, genome index must be built and several annotation files are also needed.
-(Change to `Microcket-1.4` directory before running the following commands).
+(Change to `Microcket-1.5` directory before running the following commands).
 
 To build genome indices, you need to prepare the genome sequences in fasta format. For instance, if you want to build
 indices for human genome hg38, you can download it from the UCSC genome browser:
@@ -101,7 +101,7 @@ Usage: microcket [options] -i <fq.list> -o <sid>
 
 Authors : Yu Zhao, Mengqi Yang, Fanglei Gong, Qin Peng, Leina Lu, Xiaowen Lyu, and Kun Sun
 Software: Kun Sun (sunkun@szbl.ac.cn)
-Version : 1.4, Apr 2025
+Version : 1.5, Oct 2026
 
 Microcket is an extra-fast and flexible toolkit for Hi-C/Micro-C data analysis.
 It has been specifically optimized for long-cycle (100 or longer) Micro-C data.
@@ -220,7 +220,7 @@ In these files, `XXX.valid.bam` (XXX is the parameter in "-o" option) contains t
 (with an index; them bam file will not be generated if '-x' is set), `XXX.final.pairs` records the called `pairs`,
 `XXX.hic` records the matrix in `hic` format (optionally in an additional `cool` format), and `XXX.final.stat` records
 the key statistics of the analysis (e.g., for QC). For this testing dataset, the statistics would look like this
-(note that the numbers may vary with different versions of Microcket or reference genomes):
+(note that the numbers may vary when using different versions of Microcket):
 ```
 #Category       Count   Fraction(%)
 ## Preprocessing and alignment

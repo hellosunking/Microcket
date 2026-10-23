@@ -1,13 +1,15 @@
 #!/bin/bash
 #
 # Author: Kun Sun @ SZBL (sunkun@szbl.ac.cn)
-# Date  : 2024.12.12
+# Date  : 2025.5.17
 #
 set -o nounset
 set -o errexit
 
-VERSION="v1.4, Apr 2025"
-
+VERSION="v1.5, Oct 2025"
+## changes v1.5
+## add support for bwa-mem2
+##
 ## changes v1.4
 ## Optimize the determination of stitching in "auto" mode
 ## change the distance to call self-circles to 10
@@ -49,8 +51,8 @@ Options:
   -m mode      Set read stitch mode. Default: auto
                    Supports yes, no, auto
 
-  -a aligner   Set underline aligner. Default: BWA
-                   Supports STAR, BWA, STAR-BWA, BWA-STAR
+  -a aligner   Set underline aligner. Default: BWA2
+                   Supports STAR, BWA, BWA2, or a combination, e.g., BWA2-STAR
   -e VALUE     Set the minimum alignable proportion of a read to consider as complete mapping
                    Default: 0.5. Must be a number between 0 and 1.
   -Q VALUE     Set the minimum mapping quality for a read to be considered. Default: 10
@@ -91,7 +93,7 @@ infile=""
 sid=""
 
 genome="hg38"
-aligner="BWA"
+aligner="BWA2"
 seqKit="illumina"
 catmod="auto"
 thread=0
@@ -116,7 +118,7 @@ do
 			;;
 		g)genome="$OPTARG"
 			;;
-		a)aligner="$OPTARG"
+		a)aligner="${OPTARG^^}"
 			;;
 		k)seqKit="$OPTARG"
 			;;
@@ -182,54 +184,40 @@ fi
 ## check aligner and index
 sindex="$MDR/index/$genome/STAR"
 bindex="$MDR/index/$genome/BWA/$genome"
-if [ $aligner == "STAR" ] || [ $aligner == "star" ]
+b2index="$MDR/index/$genome/BWA2/$genome"
+
+if [[ $aligner =~ - ]]
 then
-	if [ ! -s "$sindex/SA" ]
-	then
-		echo "ERROR: STAR index for $genome is missing!" >/dev/stderr
-		exit 10
-	fi
-	aligner_flash="STAR"
-	aligner_unc="STAR"
-elif [ $aligner == "BWA" ] || [ $aligner == "bwa" ]
-then
-	if [ ! -s "$bindex.sa" ]
-	then
-		echo "ERROR: BWA index for $genome is missing!" >/dev/stderr
-		exit 10
-	fi
-	aligner_flash="BWA"
-	aligner_unc="BWA"
-elif [ $aligner == "STAR-BWA" ] || [ $aligner == "star-bwa" ]
-then
-	if [ ! -s "$sindex/SA" ]
-	then
-		echo "ERROR: STAR index for $genome is missing!" >/dev/stderr
-		exit 10
-	fi
-	if [ ! -s "$bindex.sa" ]
-	then
-		echo "ERROR: BWA index for $genome is missing!" >/dev/stderr
-		exit 10
-	fi
-	aligner_flash="STAR"
-	aligner_unc="BWA"
-elif [ $aligner == "BWA-STAR" ] || [ $aligner == "bwa-star" ]
-then
-	if [ ! -s "$sindex/SA" ]
-	then
-		echo "ERROR: STAR index for $genome is missing!" >/dev/stderr
-		exit 10
-	fi
-	if [ ! -s "$bindex.sa" ]
-	then
-		echo "ERROR: BWA index for $genome is missing!" >/dev/stderr
-		exit 10
-	fi
-	aligner_flash="BWA"
-	aligner_unc="STAR"
+	aligner_flash=`echo $aligner | perl -ne 's/-.+$//; print'`
+	aligner_unc=`echo $aligner | perl -ne 's/^.+-//; print'`
 else
-	echo "ERROR: Unsupported aligner! Currently Microcket only supports STAR, BWA, STAR-BWA, or BWA-STAR." >/dev/stderr
+	aligner_flash=$aligner
+	aligner_unc=$aligner
+fi
+
+if [ $aligner_flash == "STAR" ] || [ $aligner_unc == "STAR" ]
+then
+	if [ ! -s "$sindex/SA" ]
+	then
+		echo "ERROR: STAR index for $genome is missing!" >/dev/stderr
+		exit 10
+	fi
+elif [ $aligner_flash == "BWA" ] || [ $aligner_unc == "BWA" ]
+then
+	if [ ! -s "$bindex.sa" ]
+	then
+		echo "ERROR: BWA index for $genome is missing!" >/dev/stderr
+		exit 10
+	fi
+elif [ $aligner_flash == "BWA2" ] || [ $aligner_unc == "BWA2" ]
+then
+	if [ ! -s "$b2index.pac" ]
+	then
+		echo "ERROR: BWA2 index for $genome is missing!" >/dev/stderr
+		exit 10
+	fi
+else
+	echo "ERROR: Unsupported aligner $aligner!" >/dev/stderr
 	exit 10
 fi
 
@@ -350,7 +338,10 @@ datetime=`date`
 [ $quietmode == "yes" ] || echo "########## Microcket starts on $datetime ##########"
 
 [ $quietmode == "yes" ] || echo "Checking read stitch strategy ..."
-## auto mode: check whether 10% or more reads could be stitched using the heading 100K reads
+##minConcatCycle=99
+minConcatCycle=120
+## in auto mode: check read cycle, if too short, i.e., < 100, then do not do flash combine
+## for HiC, most protocols generate ~400 bp fragments therefore PE150 could not read through
 kthread=6
 [ $thread -ge 8 ] && kthread=8
 if [ $catmod == "auto" ]
@@ -415,7 +406,7 @@ then
 		ln -sf $sid.rmdup.read2.fq $sid.cut.read2.fq
 	fi
 
-	if [ $? != 0 ]
+	if [ $? != 0 ] || [ ! -s $sid.trim.log ]
 	then
 		echo "ERROR: preprcessing failed! Please check your fastq files!" >/dev/stderr
 		exit 31
@@ -429,7 +420,7 @@ else	## biological repolicates; including multi-index during library preparation
 		do
 			$PRG/ktrim -k $seqKit -t $kthread -o $sid.$i -1 ${R1s_arr[$i]} -2 ${R2s_arr[$i]} -c | \
 			$PRG/krmdup.pipe -i /dev/stdin -o $sid.rmdup
-			if [ $? != 0 ]
+			if [ $? != 0 ] || [ ! -s $sid.$i.trim.log ]
 			then
 				echo "ERROR: preprcessing failed! Check your fastq files!" >/dev/stderr
 				exit 31
@@ -443,7 +434,7 @@ else	## biological repolicates; including multi-index during library preparation
 		do
 			$PRG/ktrim -k $seqKit -t $kthread -o $sid.$i -1 ${R1s_arr[$i]} -2 ${R2s_arr[$i]} -c | \
 			$PRG/krmdup -i /dev/stdin -o $sid.rmdup
-			if [ $? != 0 ]
+			if [ $? != 0 ] || [ ! -s $sid.$i.trim.log ]
 			then
 				echo "ERROR: preprcessing failed! Check your fastq files!" >/dev/stderr
 				exit 31
@@ -477,11 +468,16 @@ then
 
 		$PRG/samtools view -@ $vthread $sid.STAR/flash.Aligned.out.bam | \
 		$PRG/sam2pairs /dev/stdin flash $sid $sthread $completeMappingRatio $minMapQ $writeBam | \
-		LANG=C sort -k2,2d -k4,4d -k3,3n -k5,5n --parallel=$thread -S 50% >$sid.flash.pairs
-	else	## BWA
+		LANG=C sort -k2,2d -k4,4d -k3,3n -k5,5n --parallel=$thread -S 50% -T /home/tmp >$sid.flash.pairs
+	elif [ $aligner_flash == "BWA" ]	## BWA
+	then
 		$PRG/bwa mem -v 1 -5 -T 10 -t $thread $bindex $sid.ext.fq 2>$sid.bwa.ext.log | \
 		$PRG/sam2pairs /dev/stdin flash $sid $sthread $completeMappingRatio $minMapQ $writeBam | \
-		LANG=C sort -k2,2d -k4,4d -k3,3n -k5,5n --parallel=$thread -S 50% >$sid.flash.pairs
+		LANG=C sort -k2,2d -k4,4d -k3,3n -k5,5n --parallel=$thread -S 50% -T /home/tmp >$sid.flash.pairs
+	else	## BWA-mem2
+		$PRG/bwa-mem2 mem -v 1 -5 -T 10 -t $thread $b2index $sid.ext.fq 2>$sid.bwa2.ext.log | \
+		$PRG/sam2pairs /dev/stdin flash $sid $sthread $completeMappingRatio $minMapQ $writeBam | \
+		LANG=C sort -k2,2d -k4,4d -k3,3n -k5,5n --parallel=$thread -S 50% -T /home/tmp >$sid.flash.pairs
 	fi
 
 	uncfile=$sid.unc.pairs
@@ -496,14 +492,18 @@ if [ $aligner_unc == "STAR" ]
 then
 	mkdir -p $sid.STAR/
 	$PRG/STAR $STARparam --readFilesIn $sid.cut.read1.fq $sid.cut.read2.fq --outFileNamePrefix $sid.STAR/unc. >$sid.STAR/unc.run.log
-
 	$PRG/samtools view -@ $vthread $sid.STAR/unc.Aligned.out.bam | \
 	$PRG/sam2pairs /dev/stdin unc $sid $sthread $completeMappingRatio $minMapQ $writeBam | \
-	LANG=C sort -k2,2d -k4,4d -k3,3n -k5,5n --parallel=$thread -S 50% >>$uncfile
-else
+	LANG=C sort -k2,2d -k4,4d -k3,3n -k5,5n --parallel=$thread -S 50% -T /home/tmp >>$uncfile
+elif [ $aligner_unc == "BWA" ]
+then
 	$PRG/bwa mem -v 1 -5 -S -P -T 10 -t $thread $bindex $sid.cut.read1.fq $sid.cut.read2.fq 2>$sid.bwa.unc.log | \
 	$PRG/sam2pairs /dev/stdin unc $sid $sthread $completeMappingRatio $minMapQ $writeBam | \
-	LANG=C sort -k2,2d -k4,4d -k3,3n -k5,5n --parallel=$thread -S 50% >>$uncfile
+	LANG=C sort -k2,2d -k4,4d -k3,3n -k5,5n --parallel=$thread -S 50% -T /home/tmp >>$uncfile
+else
+	$PRG/bwa-mem2 mem -v 1 -5 -S -P -T 10 -t $thread $b2index $sid.cut.read1.fq $sid.cut.read2.fq 2>$sid.bwa2.unc.log | \
+	$PRG/sam2pairs /dev/stdin unc $sid $sthread $completeMappingRatio $minMapQ $writeBam | \
+	LANG=C sort -k2,2d -k4,4d -k3,3n -k5,5n --parallel=$thread -S 50% -T /home/tmp >>$uncfile
 fi
 
 ## NOTE: this header is essential for juicerbox to recognize the format
@@ -511,7 +511,7 @@ fi
 if [ -s $sid.flash.pairs ]	## Stitch occurs, there should be 2 sorted pairs files, merge them
 then
 	[ $quietmode == "yes" ] || echo "Pooling pairs ..."
-	LANG=C sort -k2,2d -k4,4d -k3,3n -k5,5n --parallel=$thread -S 50% -m $sid.flash.pairs $sid.unc.pairs >>$sid.final.pairs
+	LANG=C sort -k2,2d -k4,4d -k3,3n -k5,5n --parallel=$thread -S 50% -T /home/tmp -m $sid.flash.pairs $sid.unc.pairs >>$sid.final.pairs
 fi
 
 [ $quietmode == "yes" ] || echo "Generating analysis statistics ..."
@@ -522,11 +522,11 @@ perl $PRG/make.stat.pl $sid $DoSTITCH >$sid.final.stat
 if [ $ucscHic == "yes" ]
 then
 	## a relatively old version of juicer tool will be used to be compatible with UCSC
-	java -Xmx4g -jar $PRG/juicer_tools.ucsc.jar pre -r $resolution $sid.final.pairs $sid.hic $GINFO &
+	java -Xmx8g -jar $PRG/juicer_tools.ucsc.jar pre -r $resolution $sid.final.pairs $sid.hic $GINFO &
 else
 	## newer versions supports "--threads"
 	## but does not speed-up significantly with multi-threads
-	java -Xmx32g -jar $PRG/juicer_tools.jar pre --threads $sthread -r $resolution $sid.final.pairs $sid.hic $GINFO &
+	echo java -Xmx16g -jar $PRG/juicer_tools.jar pre --threads $sthread -r $resolution $sid.final.pairs $sid.hic $GINFO &
 fi >$sid.juicer.log 2>&1
 
 ## generate final mapping results
